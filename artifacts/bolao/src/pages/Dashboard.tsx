@@ -3,7 +3,7 @@ import { useGetMatches, useGetMyRanking, useGetMe } from "@workspace/api-client-
 import { Layout } from "@/components/Layout";
 import { MatchCard } from "@/components/MatchCard";
 import { Card } from "@/components/ui/card";
-import { Trophy, Target, Star, ChevronRight } from "lucide-react";
+import { Trophy, Target, Star, ChevronRight, Info } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Dashboard() {
@@ -85,6 +85,9 @@ export default function Dashboard() {
             </Card>
           )}
         </div>
+
+        {/* Scoring Rules */}
+        <ScoringTable />
       </div>
     </Layout>
   );
@@ -99,6 +102,112 @@ function StatCard({ title, value, icon: Icon, color }: any) {
       </div>
       <span className={`text-4xl font-display font-bold ${color}`}>{value}</span>
     </Card>
+  );
+}
+
+function ScoringTable() {
+  const matchRows = [
+    { result: "Placar Exato", description: "Acertou o placar exato do jogo", points: 10, color: "text-primary", bg: "bg-primary/10 border-primary/20" },
+    { result: "Resultado + Saldo de Gols", description: "Acertou o vencedor e a diferença de gols", points: 7, color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20" },
+    { result: "Resultado Correto", description: "Acertou apenas o vencedor ou empate", points: 5, color: "text-purple-400", bg: "bg-purple-400/10 border-purple-400/20" },
+    { result: "Resultado Errado", description: "Não acertou o resultado", points: 0, color: "text-muted-foreground", bg: "bg-secondary/40 border-white/5" },
+  ];
+
+  const bonusRows = [
+    { result: "Campeão", description: "Acertou o campeão do torneio", points: 15, color: "text-accent", bg: "bg-accent/10 border-accent/20" },
+    { result: "Artilheiro", description: "Acertou o artilheiro do torneio", points: 10, color: "text-orange-400", bg: "bg-orange-400/10 border-orange-400/20" },
+  ];
+
+  const tiebreakerRows = [
+    { order: "1º", criterion: "Mais placares exatos" },
+    { order: "2º", criterion: "Mais resultados corretos" },
+    { order: "3º", criterion: "Mais palpites enviados" },
+  ];
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-6">
+        <Info className="w-5 h-5 text-primary" />
+        <h2 className="text-2xl font-display font-bold">PONTUAÇÃO</h2>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Match scoring */}
+        <div className="lg:col-span-2 glass-panel rounded-2xl border border-white/10 overflow-hidden">
+          <div className="bg-secondary/60 px-5 py-3 border-b border-white/10">
+            <h3 className="font-display uppercase text-sm tracking-wider text-muted-foreground">Palpites de Partidas</h3>
+          </div>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/5 text-xs uppercase text-muted-foreground">
+                <th className="px-5 py-3 text-left">Resultado</th>
+                <th className="px-5 py-3 text-left hidden sm:table-cell">Descrição</th>
+                <th className="px-5 py-3 text-right">Pontos</th>
+              </tr>
+            </thead>
+            <tbody>
+              {matchRows.map((row) => (
+                <tr key={row.result} className="border-b border-white/5 last:border-0 hover:bg-white/3 transition-colors">
+                  <td className="px-5 py-4">
+                    <span className={`inline-flex items-center gap-2 font-display font-semibold text-sm ${row.color}`}>
+                      {row.result}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4 text-sm text-muted-foreground hidden sm:table-cell">{row.description}</td>
+                  <td className="px-5 py-4 text-right">
+                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-display font-bold border ${row.bg} ${row.color}`}>
+                      {row.points > 0 ? `+${row.points}` : row.points}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Bonus + Tiebreaker */}
+        <div className="flex flex-col gap-4">
+          {/* Bonus */}
+          <div className="glass-panel rounded-2xl border border-white/10 overflow-hidden flex-1">
+            <div className="bg-secondary/60 px-5 py-3 border-b border-white/10">
+              <h3 className="font-display uppercase text-sm tracking-wider text-muted-foreground">Bônus</h3>
+            </div>
+            <table className="w-full">
+              <tbody>
+                {bonusRows.map((row) => (
+                  <tr key={row.result} className="border-b border-white/5 last:border-0 hover:bg-white/3 transition-colors">
+                    <td className="px-5 py-4">
+                      <p className={`font-display font-semibold text-sm ${row.color}`}>{row.result}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{row.description}</p>
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-display font-bold border ${row.bg} ${row.color}`}>
+                        +{row.points}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Tiebreaker */}
+          <div className="glass-panel rounded-2xl border border-white/10 overflow-hidden">
+            <div className="bg-secondary/60 px-5 py-3 border-b border-white/10">
+              <h3 className="font-display uppercase text-sm tracking-wider text-muted-foreground">Desempate</h3>
+            </div>
+            <ul className="divide-y divide-white/5">
+              {tiebreakerRows.map((row) => (
+                <li key={row.order} className="flex items-center gap-4 px-5 py-3 hover:bg-white/3 transition-colors">
+                  <span className="font-display font-bold text-primary text-lg w-8 shrink-0">{row.order}</span>
+                  <span className="text-sm text-muted-foreground">{row.criterion}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
