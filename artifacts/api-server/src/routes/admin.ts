@@ -1,6 +1,6 @@
 import { Router } from "express";
 import crypto from "crypto";
-import { db, invitesTable, matchesTable, betsTable, usersTable, teamsTable, groupsTable } from "@workspace/db";
+import { db, invitesTable, matchesTable, betsTable, usersTable, teamsTable, groupsTable, scoringConfigTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
   CreateInviteBody,
@@ -10,10 +10,68 @@ import {
   CreateTeamBody,
 } from "@workspace/api-zod";
 import { requireAdmin } from "../lib/auth";
-import { calculateBetPoints } from "../lib/scoring";
+import { calculateBetPoints, DEFAULT_SCORING_CONFIG, type ScoringConfig } from "../lib/scoring";
+import { z } from "zod/v4";
 
 const router = Router();
 router.use(requireAdmin);
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+async function getConfig(): Promise<ScoringConfig> {
+  const [row] = await db.select().from(scoringConfigTable).where(eq(scoringConfigTable.id, 1));
+  if (!row) return DEFAULT_SCORING_CONFIG;
+  return {
+    exactScore: row.exactScore,
+    correctOutcomeGoalDiff: row.correctOutcomeGoalDiff,
+    correctOutcome: row.correctOutcome,
+    wrongOutcome: row.wrongOutcome,
+    bonusChampion: row.bonusChampion,
+    bonusTopScorer: row.bonusTopScorer,
+  };
+}
+
+// ─── Scoring Config ──────────────────────────────────────────────────────────
+
+router.get("/scoring-config", async (req, res) => {
+  try {
+    res.json(await getConfig());
+  } catch (err) {
+    req.log.error({ err }, "Failed to get scoring config");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+const ScoringConfigBody = z.object({
+  exactScore: z.number().int().min(0),
+  correctOutcomeGoalDiff: z.number().int().min(0),
+  correctOutcome: z.number().int().min(0),
+  wrongOutcome: z.number().int().min(0),
+  bonusChampion: z.number().int().min(0),
+  bonusTopScorer: z.number().int().min(0),
+});
+
+router.put("/scoring-config", async (req, res) => {
+  const parsed = ScoringConfigBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Bad request", message: "Invalid scoring config" });
+    return;
+  }
+  try {
+    const [existing] = await db.select({ id: scoringConfigTable.id }).from(scoringConfigTable).where(eq(scoringConfigTable.id, 1));
+    if (existing) {
+      await db.update(scoringConfigTable).set({ ...parsed.data, updatedAt: new Date() }).where(eq(scoringConfigTable.id, 1));
+    } else {
+      await db.insert(scoringConfigTable).values({ id: 1, ...parsed.data });
+    }
+    res.json(await getConfig());
+  } catch (err) {
+    req.log.error({ err }, "Failed to update scoring config");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── Invites ─────────────────────────────────────────────────────────────────
 
 router.post("/invite", async (req, res) => {
   const parsed = CreateInviteBody.safeParse(req.body);
@@ -44,6 +102,8 @@ router.get("/invites", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// ─── Groups & Teams ───────────────────────────────────────────────────────────
 
 router.post("/groups", async (req, res) => {
   const parsed = CreateGroupBody.safeParse(req.body);
@@ -88,6 +148,8 @@ router.post("/teams", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// ─── Matches ─────────────────────────────────────────────────────────────────
 
 router.post("/matches", async (req, res) => {
   const parsed = CreateMatchBody.safeParse(req.body);
@@ -152,9 +214,10 @@ router.put("/matches/:matchId/result", async (req, res) => {
       .returning();
 
     if (status === "finished") {
+      const config = await getConfig();
       const bets = await db.select().from(betsTable).where(eq(betsTable.matchId, matchId));
       for (const bet of bets) {
-        const scored = calculateBetPoints(bet.homeScore, bet.awayScore, homeScore, awayScore);
+        const scored = calculateBetPoints(bet.homeScore, bet.awayScore, homeScore, awayScore, config);
         await db.update(betsTable).set({
           points: scored.points,
           exactScore: scored.exactScore,
@@ -174,6 +237,8 @@ router.put("/matches/:matchId/result", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// ─── Users ────────────────────────────────────────────────────────────────────
 
 router.get("/users", async (req, res) => {
   try {

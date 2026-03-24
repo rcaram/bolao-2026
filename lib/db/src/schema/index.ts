@@ -6,3 +6,4 @@ export * from "./matches";
 export * from "./bets";
 export * from "./bonus_bets";
 export * from "./sessions";
+export * from "./scoring_config";
