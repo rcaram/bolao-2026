@@ -1,22 +1,35 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Bolão Copa 2026 - World Cup Betting Pool API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: users
+    description: User management
+  - name: matches
+    description: Match operations
+  - name: bets
+    description: Bet operations
+  - name: rankings
+    description: Ranking operations
+  - name: admin
+    description: Admin operations
+  - name: bonuses
+    description: Bonus bet operations
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +37,425 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user via invitation token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout current user
+      responses:
+        "200":
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/invite:
+    post:
+      operationId: createInvite
+      tags: [admin]
+      summary: Create an invitation link (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInviteRequest"
+      responses:
+        "201":
+          description: Invitation created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/invites:
+    get:
+      operationId: listInvites
+      tags: [admin]
+      summary: List all invites (admin only)
+      responses:
+        "200":
+          description: List of invites
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Invite"
+
+  /admin/matches:
+    post:
+      operationId: createMatch
+      tags: [admin]
+      summary: Create a match (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMatchRequest"
+      responses:
+        "201":
+          description: Match created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Match"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/matches/{matchId}/result:
+    put:
+      operationId: updateMatchResult
+      tags: [admin]
+      summary: Update match result and trigger score recalculation (admin only)
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMatchResultRequest"
+      responses:
+        "200":
+          description: Match result updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Match"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Match not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/users:
+    get:
+      operationId: listUsers
+      tags: [admin]
+      summary: List all users (admin only)
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserSummary"
+
+  /matches:
+    get:
+      operationId: getMatches
+      tags: [matches]
+      summary: Get all matches
+      parameters:
+        - name: stage
+          in: query
+          schema:
+            type: string
+            enum: [group, round_of_16, quarterfinal, semifinal, final, third_place]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [upcoming, live, finished]
+      responses:
+        "200":
+          description: List of matches with user's bets if authenticated
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MatchWithBet"
+
+  /matches/{matchId}:
+    get:
+      operationId: getMatch
+      tags: [matches]
+      summary: Get a single match
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Match details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchWithBet"
+        "404":
+          description: Match not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bets:
+    post:
+      operationId: submitBet
+      tags: [bets]
+      summary: Submit or update a bet for a match
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitBetRequest"
+      responses:
+        "200":
+          description: Bet submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bet"
+        "400":
+          description: Bet deadline passed or invalid data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Match not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bets/my:
+    get:
+      operationId: getMyBets
+      tags: [bets]
+      summary: Get all bets for the current user
+      responses:
+        "200":
+          description: User's bets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BetWithMatch"
+
+  /bets/match/{matchId}:
+    get:
+      operationId: getMatchBets
+      tags: [bets]
+      summary: Get all bets for a match (visible after match starts)
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Bets for the match
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BetWithUser"
+
+  /rankings:
+    get:
+      operationId: getRankings
+      tags: [rankings]
+      summary: Get current leaderboard rankings
+      responses:
+        "200":
+          description: Leaderboard
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RankingEntry"
+
+  /rankings/my:
+    get:
+      operationId: getMyRanking
+      tags: [rankings]
+      summary: Get current user's ranking details
+      responses:
+        "200":
+          description: User ranking details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserRankingDetail"
+
+  /bonuses:
+    get:
+      operationId: getMyBonusBets
+      tags: [bonuses]
+      summary: Get current user's bonus bets
+      responses:
+        "200":
+          description: User's bonus bets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BonusBet"
+    post:
+      operationId: submitBonusBets
+      tags: [bonuses]
+      summary: Submit bonus bets (champion and top scorer predictions)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitBonusBetsRequest"
+      responses:
+        "200":
+          description: Bonus bets submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BonusBet"
+        "400":
+          description: Bonus bet deadline passed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /invite/{token}:
+    get:
+      operationId: validateInviteToken
+      tags: [auth]
+      summary: Validate an invitation token
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Token is valid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteValidationResponse"
+        "404":
+          description: Token not found or expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +466,424 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        name:
+          type: string
+        inviteToken:
+          type: string
+      required:
+        - email
+        - password
+        - name
+        - inviteToken
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        message:
+          type: string
+      required:
+        - user
+        - message
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, participant]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - name
+        - role
+        - createdAt
+
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, participant]
+        totalPoints:
+          type: integer
+        betsSubmitted:
+          type: integer
+      required:
+        - id
+        - email
+        - name
+        - role
+        - totalPoints
+        - betsSubmitted
+
+    CreateInviteRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        expiresInDays:
+          type: integer
+          default: 7
+      required:
+        - email
+
+    InviteResponse:
+      type: object
+      properties:
+        invite:
+          $ref: "#/components/schemas/Invite"
+        inviteUrl:
+          type: string
+      required:
+        - invite
+        - inviteUrl
+
+    Invite:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        token:
+          type: string
+        used:
+          type: boolean
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - token
+        - used
+        - expiresAt
+        - createdAt
+
+    InviteValidationResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        email:
+          type: string
+      required:
+        - valid
+        - email
+
+    CreateMatchRequest:
+      type: object
+      properties:
+        homeTeam:
+          type: string
+        awayTeam:
+          type: string
+        homeTeamFlag:
+          type: string
+        awayTeamFlag:
+          type: string
+        matchDate:
+          type: string
+          format: date-time
+        stage:
+          type: string
+          enum: [group, round_of_16, quarterfinal, semifinal, final, third_place]
+        groupName:
+          type: string
+        venue:
+          type: string
+      required:
+        - homeTeam
+        - awayTeam
+        - matchDate
+        - stage
+
+    UpdateMatchResultRequest:
+      type: object
+      properties:
+        homeScore:
+          type: integer
+          minimum: 0
+        awayScore:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum: [upcoming, live, finished]
+      required:
+        - homeScore
+        - awayScore
+        - status
+
+    Match:
+      type: object
+      properties:
+        id:
+          type: integer
+        homeTeam:
+          type: string
+        awayTeam:
+          type: string
+        homeTeamFlag:
+          type: string
+        awayTeamFlag:
+          type: string
+        matchDate:
+          type: string
+          format: date-time
+        stage:
+          type: string
+          enum: [group, round_of_16, quarterfinal, semifinal, final, third_place]
+        groupName:
+          type: string
+        venue:
+          type: string
+        homeScore:
+          type: integer
+        awayScore:
+          type: integer
+        status:
+          type: string
+          enum: [upcoming, live, finished]
+        bettingDeadline:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - homeTeam
+        - awayTeam
+        - matchDate
+        - stage
+        - status
+        - bettingDeadline
+        - createdAt
+
+    MatchWithBet:
+      allOf:
+        - $ref: "#/components/schemas/Match"
+        - type: object
+          properties:
+            userBet:
+              $ref: "#/components/schemas/Bet"
+
+    SubmitBetRequest:
+      type: object
+      properties:
+        matchId:
+          type: integer
+        homeScore:
+          type: integer
+          minimum: 0
+        awayScore:
+          type: integer
+          minimum: 0
+      required:
+        - matchId
+        - homeScore
+        - awayScore
+
+    Bet:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        matchId:
+          type: integer
+        homeScore:
+          type: integer
+        awayScore:
+          type: integer
+        points:
+          type: integer
+        exactScore:
+          type: boolean
+        correctOutcome:
+          type: boolean
+        correctGoalDiff:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - matchId
+        - homeScore
+        - awayScore
+        - createdAt
+        - updatedAt
+
+    BetWithMatch:
+      allOf:
+        - $ref: "#/components/schemas/Bet"
+        - type: object
+          properties:
+            match:
+              $ref: "#/components/schemas/Match"
+
+    BetWithUser:
+      allOf:
+        - $ref: "#/components/schemas/Bet"
+        - type: object
+          properties:
+            user:
+              type: object
+              properties:
+                id:
+                  type: integer
+                name:
+                  type: string
+              required:
+                - id
+                - name
+
+    RankingEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: string
+        totalPoints:
+          type: integer
+        exactScores:
+          type: integer
+        correctOutcomes:
+          type: integer
+        bonusPoints:
+          type: integer
+        betsSubmitted:
+          type: integer
+        totalMatches:
+          type: integer
+      required:
+        - rank
+        - userId
+        - userName
+        - totalPoints
+        - exactScores
+        - correctOutcomes
+        - bonusPoints
+        - betsSubmitted
+        - totalMatches
+
+    UserRankingDetail:
+      allOf:
+        - $ref: "#/components/schemas/RankingEntry"
+        - type: object
+          properties:
+            recentBets:
+              type: array
+              items:
+                $ref: "#/components/schemas/BetWithMatch"
+
+    SubmitBonusBetsRequest:
+      type: object
+      properties:
+        champion:
+          type: string
+        topScorer:
+          type: string
+      required:
+        - champion
+
+    BonusBet:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        champion:
+          type: string
+        topScorer:
+          type: string
+        championPoints:
+          type: integer
+        topScorerPoints:
+          type: integer
+        locked:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - champion
+        - locked
+        - createdAt
+        - updatedAt

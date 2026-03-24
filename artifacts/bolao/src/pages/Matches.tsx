@@ -1,0 +1,55 @@
+import React, { useState } from "react";
+import { useGetMatches } from "@workspace/api-client-react";
+import { Layout } from "@/components/Layout";
+import { MatchCard } from "@/components/MatchCard";
+
+const STAGES = ["all", "group", "round_of_16", "quarterfinal", "semifinal", "final", "third_place"];
+
+export default function Matches() {
+  const [stageFilter, setStageFilter] = useState<any>("all");
+  const { data: matches, isLoading } = useGetMatches(
+    stageFilter === "all" ? {} : { stage: stageFilter }
+  );
+
+  return (
+    <Layout>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-4xl font-display font-bold mb-4">MATCHES</h1>
+          
+          <div className="flex overflow-x-auto pb-4 gap-2 no-scrollbar">
+            {STAGES.map(stage => (
+              <button
+                key={stage}
+                onClick={() => setStageFilter(stage)}
+                className={`whitespace-nowrap px-5 py-2 rounded-full font-display uppercase text-sm transition-all ${
+                  stageFilter === stage 
+                    ? "bg-primary text-primary-foreground shadow-[0_0_15px_var(--color-primary)]" 
+                    : "bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
+                }`}
+              >
+                {stage.replace(/_/g, ' ')}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {[1, 2, 3, 4].map(i => <div key={i} className="h-64 rounded-2xl bg-secondary/50 animate-pulse" />)}
+          </div>
+        ) : matches?.length ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {matches.map(match => (
+              <MatchCard key={match.id} match={match} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-20 text-muted-foreground">
+            No matches found for this filter.
+          </div>
+        )}
+      </div>
+    </Layout>
+  );
+}

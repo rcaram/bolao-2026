@@ -1,0 +1,16 @@
+packages:
+  "framer-motion": "For page transitions and interactive animations"
+  "date-fns": "For formatting match dates and bet deadlines"
+  "clsx": "For merging tailwind classes"
+  "tailwind-merge": "For merging tailwind classes"
+  "react-hook-form": "For form state management"
+  "@hookform/resolvers": "For zod validation with react-hook-form"
+
+images:
+  - path: "artifacts/bolao/public/images/hero-stadium.png"
+    description: "Vibrant stadium at night under floodlights with glowing green grass and cinematic lens flares, dark background, sports competition atmosphere"
+    aspect_ratio: "16:9"
+
+notes:
+  - Import React Query hooks and types directly from @workspace/api-client-react
+  - Session auth is handled via httpOnly cookies, getMe returns 401 if unauthenticated
