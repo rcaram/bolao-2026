@@ -3,16 +3,17 @@
  * Do not edit manually.
  * Api
  * Bolão Copa 2026 - World Cup Betting Pool API
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 
 export type MatchStage = (typeof MatchStage)[keyof typeof MatchStage];
 
 export const MatchStage = {
   group: "group",
+  round_of_32: "round_of_32",
   round_of_16: "round_of_16",
   quarterfinal: "quarterfinal",
   semifinal: "semifinal",
-  final: "final",
   third_place: "third_place",
+  final: "final",
 } as const;

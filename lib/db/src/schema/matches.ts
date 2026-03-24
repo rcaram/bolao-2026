@@ -1,14 +1,17 @@
 import { pgTable, text, serial, timestamp, integer, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { teamsTable } from "./teams";
+import { groupsTable } from "./groups";
 
 export const matchStageEnum = pgEnum("match_stage", [
   "group",
+  "round_of_32",
   "round_of_16",
   "quarterfinal",
   "semifinal",
-  "final",
   "third_place",
+  "final",
 ]);
 
 export const matchStatusEnum = pgEnum("match_status", [
@@ -19,13 +22,14 @@ export const matchStatusEnum = pgEnum("match_status", [
 
 export const matchesTable = pgTable("matches", {
   id: serial("id").primaryKey(),
-  homeTeam: text("home_team").notNull(),
-  awayTeam: text("away_team").notNull(),
-  homeTeamFlag: text("home_team_flag"),
-  awayTeamFlag: text("away_team_flag"),
+  homeTeamId: integer("home_team_id").references(() => teamsTable.id, { onDelete: "set null" }),
+  awayTeamId: integer("away_team_id").references(() => teamsTable.id, { onDelete: "set null" }),
+  homePlaceholder: text("home_placeholder"),
+  awayPlaceholder: text("away_placeholder"),
+  groupId: integer("group_id").references(() => groupsTable.id, { onDelete: "set null" }),
   matchDate: timestamp("match_date").notNull(),
   stage: matchStageEnum("stage").notNull(),
-  groupName: text("group_name"),
+  matchNumber: integer("match_number"),
   venue: text("venue"),
   homeScore: integer("home_score"),
   awayScore: integer("away_score"),

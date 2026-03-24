@@ -6,7 +6,9 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export interface InviteValidationResponse {
-  valid: boolean;
-  email: string;
+export interface CreateTeamRequest {
+  name: string;
+  flag?: string;
+  fifaCode: string;
+  groupId?: number;
 }

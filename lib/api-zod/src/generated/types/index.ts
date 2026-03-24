@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * Bolão Copa 2026 - World Cup Betting Pool API
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 
 export * from "./authResponse";
@@ -12,13 +12,18 @@ export * from "./betWithMatch";
 export * from "./betWithUser";
 export * from "./betWithUserUser";
 export * from "./bonusBet";
+export * from "./createGroupRequest";
 export * from "./createInviteRequest";
 export * from "./createMatchRequest";
 export * from "./createMatchRequestStage";
+export * from "./createTeamRequest";
 export * from "./errorResponse";
 export * from "./getMatchesParams";
 export * from "./getMatchesStage";
 export * from "./getMatchesStatus";
+export * from "./getTeamsParams";
+export * from "./group";
+export * from "./groupWithTeams";
 export * from "./healthStatus";
 export * from "./invite";
 export * from "./inviteResponse";
@@ -33,6 +38,7 @@ export * from "./rankingEntry";
 export * from "./registerRequest";
 export * from "./submitBetRequest";
 export * from "./submitBonusBetsRequest";
+export * from "./team";
 export * from "./updateMatchResultRequest";
 export * from "./updateMatchResultRequestStatus";
 export * from "./user";

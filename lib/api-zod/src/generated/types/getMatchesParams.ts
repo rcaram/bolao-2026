@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * Bolão Copa 2026 - World Cup Betting Pool API
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 import type { GetMatchesStage } from "./getMatchesStage";
 import type { GetMatchesStatus } from "./getMatchesStatus";
@@ -11,4 +11,5 @@ import type { GetMatchesStatus } from "./getMatchesStatus";
 export type GetMatchesParams = {
   stage?: GetMatchesStage;
   status?: GetMatchesStatus;
+  groupId?: number;
 };

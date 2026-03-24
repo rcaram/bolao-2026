@@ -5,8 +5,13 @@
  * Bolão Copa 2026 - World Cup Betting Pool API
  * OpenAPI spec version: 0.2.0
  */
+import type { Group } from "./group";
 
-export type BetWithUserUser = {
+export interface Team {
   id: number;
   name: string;
-};
+  flag?: string;
+  fifaCode: string;
+  groupId?: number;
+  group?: Group;
+}

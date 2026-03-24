@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * Bolão Copa 2026 - World Cup Betting Pool API
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 import * as zod from "zod";
 
@@ -14,9 +14,6 @@ export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
 
-/**
- * @summary Register a new user via invitation token
- */
 export const registerBodyPasswordMin = 6;
 
 export const RegisterBody = zod.object({
@@ -26,9 +23,6 @@ export const RegisterBody = zod.object({
   inviteToken: zod.string(),
 });
 
-/**
- * @summary Login with email and password
- */
 export const LoginBody = zod.object({
   email: zod.string().email(),
   password: zod.string(),
@@ -45,16 +39,10 @@ export const LoginResponse = zod.object({
   message: zod.string(),
 });
 
-/**
- * @summary Logout current user
- */
 export const LogoutResponse = zod.object({
   message: zod.string(),
 });
 
-/**
- * @summary Get current authenticated user
- */
 export const GetMeResponse = zod.object({
   id: zod.number(),
   email: zod.string(),
@@ -64,137 +52,133 @@ export const GetMeResponse = zod.object({
 });
 
 /**
- * @summary Create an invitation link (admin only)
+ * @summary Get all groups with their teams
  */
-export const createInviteBodyExpiresInDaysDefault = 7;
-
-export const CreateInviteBody = zod.object({
-  email: zod.string().email(),
-  expiresInDays: zod.number().default(createInviteBodyExpiresInDaysDefault),
-});
+export const GetGroupsResponseItem = zod
+  .object({
+    id: zod.number(),
+    name: zod.string(),
+    description: zod.string().optional(),
+  })
+  .and(
+    zod.object({
+      teams: zod.array(
+        zod.object({
+          id: zod.number(),
+          name: zod.string(),
+          flag: zod.string().optional(),
+          fifaCode: zod.string(),
+          groupId: zod.number().optional(),
+          group: zod
+            .object({
+              id: zod.number(),
+              name: zod.string(),
+              description: zod.string().optional(),
+            })
+            .optional(),
+        }),
+      ),
+    }),
+  );
+export const GetGroupsResponse = zod.array(GetGroupsResponseItem);
 
 /**
- * @summary List all invites (admin only)
+ * @summary Get all teams
  */
-export const ListInvitesResponseItem = zod.object({
+export const GetTeamsQueryParams = zod.object({
+  groupId: zod.coerce.number().optional(),
+});
+
+export const GetTeamsResponseItem = zod.object({
   id: zod.number(),
-  email: zod.string(),
-  token: zod.string(),
-  used: zod.boolean(),
-  expiresAt: zod.date(),
-  createdAt: zod.date(),
-});
-export const ListInvitesResponse = zod.array(ListInvitesResponseItem);
-
-/**
- * @summary Create a match (admin only)
- */
-export const CreateMatchBody = zod.object({
-  homeTeam: zod.string(),
-  awayTeam: zod.string(),
-  homeTeamFlag: zod.string().optional(),
-  awayTeamFlag: zod.string().optional(),
-  matchDate: zod.date(),
-  stage: zod.enum([
-    "group",
-    "round_of_16",
-    "quarterfinal",
-    "semifinal",
-    "final",
-    "third_place",
-  ]),
-  groupName: zod.string().optional(),
-  venue: zod.string().optional(),
-});
-
-/**
- * @summary Update match result and trigger score recalculation (admin only)
- */
-export const UpdateMatchResultParams = zod.object({
-  matchId: zod.coerce.number(),
-});
-
-export const updateMatchResultBodyHomeScoreMin = 0;
-
-export const updateMatchResultBodyAwayScoreMin = 0;
-
-export const UpdateMatchResultBody = zod.object({
-  homeScore: zod.number().min(updateMatchResultBodyHomeScoreMin),
-  awayScore: zod.number().min(updateMatchResultBodyAwayScoreMin),
-  status: zod.enum(["upcoming", "live", "finished"]),
-});
-
-export const UpdateMatchResultResponse = zod.object({
-  id: zod.number(),
-  homeTeam: zod.string(),
-  awayTeam: zod.string(),
-  homeTeamFlag: zod.string().optional(),
-  awayTeamFlag: zod.string().optional(),
-  matchDate: zod.date(),
-  stage: zod.enum([
-    "group",
-    "round_of_16",
-    "quarterfinal",
-    "semifinal",
-    "final",
-    "third_place",
-  ]),
-  groupName: zod.string().optional(),
-  venue: zod.string().optional(),
-  homeScore: zod.number().optional(),
-  awayScore: zod.number().optional(),
-  status: zod.enum(["upcoming", "live", "finished"]),
-  bettingDeadline: zod.date(),
-  createdAt: zod.date(),
-});
-
-/**
- * @summary List all users (admin only)
- */
-export const ListUsersResponseItem = zod.object({
-  id: zod.number(),
-  email: zod.string(),
   name: zod.string(),
-  role: zod.enum(["admin", "participant"]),
-  totalPoints: zod.number(),
-  betsSubmitted: zod.number(),
+  flag: zod.string().optional(),
+  fifaCode: zod.string(),
+  groupId: zod.number().optional(),
+  group: zod
+    .object({
+      id: zod.number(),
+      name: zod.string(),
+      description: zod.string().optional(),
+    })
+    .optional(),
 });
-export const ListUsersResponse = zod.array(ListUsersResponseItem);
+export const GetTeamsResponse = zod.array(GetTeamsResponseItem);
 
-/**
- * @summary Get all matches
- */
 export const GetMatchesQueryParams = zod.object({
   stage: zod
     .enum([
       "group",
+      "round_of_32",
       "round_of_16",
       "quarterfinal",
       "semifinal",
-      "final",
       "third_place",
+      "final",
     ])
     .optional(),
   status: zod.enum(["upcoming", "live", "finished"]).optional(),
+  groupId: zod.coerce.number().optional(),
 });
 
 export const GetMatchesResponseItem = zod
   .object({
     id: zod.number(),
-    homeTeam: zod.string(),
-    awayTeam: zod.string(),
-    homeTeamFlag: zod.string().optional(),
-    awayTeamFlag: zod.string().optional(),
+    homeTeamId: zod.number().optional(),
+    awayTeamId: zod.number().optional(),
+    homeTeam: zod
+      .object({
+        id: zod.number(),
+        name: zod.string(),
+        flag: zod.string().optional(),
+        fifaCode: zod.string(),
+        groupId: zod.number().optional(),
+        group: zod
+          .object({
+            id: zod.number(),
+            name: zod.string(),
+            description: zod.string().optional(),
+          })
+          .optional(),
+      })
+      .optional(),
+    awayTeam: zod
+      .object({
+        id: zod.number(),
+        name: zod.string(),
+        flag: zod.string().optional(),
+        fifaCode: zod.string(),
+        groupId: zod.number().optional(),
+        group: zod
+          .object({
+            id: zod.number(),
+            name: zod.string(),
+            description: zod.string().optional(),
+          })
+          .optional(),
+      })
+      .optional(),
+    homePlaceholder: zod.string().optional(),
+    awayPlaceholder: zod.string().optional(),
+    groupId: zod.number().optional(),
+    group: zod
+      .object({
+        id: zod.number(),
+        name: zod.string(),
+        description: zod.string().optional(),
+      })
+      .optional(),
     matchDate: zod.date(),
     stage: zod.enum([
       "group",
+      "round_of_32",
       "round_of_16",
       "quarterfinal",
       "semifinal",
-      "final",
       "third_place",
+      "final",
     ]),
-    groupName: zod.string().optional(),
+    matchNumber: zod.number().optional(),
     venue: zod.string().optional(),
     homeScore: zod.number().optional(),
     awayScore: zod.number().optional(),
@@ -223,9 +207,6 @@ export const GetMatchesResponseItem = zod
   );
 export const GetMatchesResponse = zod.array(GetMatchesResponseItem);
 
-/**
- * @summary Get a single match
- */
 export const GetMatchParams = zod.object({
   matchId: zod.coerce.number(),
 });
@@ -233,20 +214,61 @@ export const GetMatchParams = zod.object({
 export const GetMatchResponse = zod
   .object({
     id: zod.number(),
-    homeTeam: zod.string(),
-    awayTeam: zod.string(),
-    homeTeamFlag: zod.string().optional(),
-    awayTeamFlag: zod.string().optional(),
+    homeTeamId: zod.number().optional(),
+    awayTeamId: zod.number().optional(),
+    homeTeam: zod
+      .object({
+        id: zod.number(),
+        name: zod.string(),
+        flag: zod.string().optional(),
+        fifaCode: zod.string(),
+        groupId: zod.number().optional(),
+        group: zod
+          .object({
+            id: zod.number(),
+            name: zod.string(),
+            description: zod.string().optional(),
+          })
+          .optional(),
+      })
+      .optional(),
+    awayTeam: zod
+      .object({
+        id: zod.number(),
+        name: zod.string(),
+        flag: zod.string().optional(),
+        fifaCode: zod.string(),
+        groupId: zod.number().optional(),
+        group: zod
+          .object({
+            id: zod.number(),
+            name: zod.string(),
+            description: zod.string().optional(),
+          })
+          .optional(),
+      })
+      .optional(),
+    homePlaceholder: zod.string().optional(),
+    awayPlaceholder: zod.string().optional(),
+    groupId: zod.number().optional(),
+    group: zod
+      .object({
+        id: zod.number(),
+        name: zod.string(),
+        description: zod.string().optional(),
+      })
+      .optional(),
     matchDate: zod.date(),
     stage: zod.enum([
       "group",
+      "round_of_32",
       "round_of_16",
       "quarterfinal",
       "semifinal",
-      "final",
       "third_place",
+      "final",
     ]),
-    groupName: zod.string().optional(),
+    matchNumber: zod.number().optional(),
     venue: zod.string().optional(),
     homeScore: zod.number().optional(),
     awayScore: zod.number().optional(),
@@ -274,9 +296,6 @@ export const GetMatchResponse = zod
     }),
   );
 
-/**
- * @summary Submit or update a bet for a match
- */
 export const submitBetBodyHomeScoreMin = 0;
 
 export const submitBetBodyAwayScoreMin = 0;
@@ -301,9 +320,6 @@ export const SubmitBetResponse = zod.object({
   updatedAt: zod.date(),
 });
 
-/**
- * @summary Get all bets for the current user
- */
 export const GetMyBetsResponseItem = zod
   .object({
     id: zod.number(),
@@ -323,20 +339,61 @@ export const GetMyBetsResponseItem = zod
       match: zod
         .object({
           id: zod.number(),
-          homeTeam: zod.string(),
-          awayTeam: zod.string(),
-          homeTeamFlag: zod.string().optional(),
-          awayTeamFlag: zod.string().optional(),
+          homeTeamId: zod.number().optional(),
+          awayTeamId: zod.number().optional(),
+          homeTeam: zod
+            .object({
+              id: zod.number(),
+              name: zod.string(),
+              flag: zod.string().optional(),
+              fifaCode: zod.string(),
+              groupId: zod.number().optional(),
+              group: zod
+                .object({
+                  id: zod.number(),
+                  name: zod.string(),
+                  description: zod.string().optional(),
+                })
+                .optional(),
+            })
+            .optional(),
+          awayTeam: zod
+            .object({
+              id: zod.number(),
+              name: zod.string(),
+              flag: zod.string().optional(),
+              fifaCode: zod.string(),
+              groupId: zod.number().optional(),
+              group: zod
+                .object({
+                  id: zod.number(),
+                  name: zod.string(),
+                  description: zod.string().optional(),
+                })
+                .optional(),
+            })
+            .optional(),
+          homePlaceholder: zod.string().optional(),
+          awayPlaceholder: zod.string().optional(),
+          groupId: zod.number().optional(),
+          group: zod
+            .object({
+              id: zod.number(),
+              name: zod.string(),
+              description: zod.string().optional(),
+            })
+            .optional(),
           matchDate: zod.date(),
           stage: zod.enum([
             "group",
+            "round_of_32",
             "round_of_16",
             "quarterfinal",
             "semifinal",
-            "final",
             "third_place",
+            "final",
           ]),
-          groupName: zod.string().optional(),
+          matchNumber: zod.number().optional(),
           venue: zod.string().optional(),
           homeScore: zod.number().optional(),
           awayScore: zod.number().optional(),
@@ -349,9 +406,6 @@ export const GetMyBetsResponseItem = zod
   );
 export const GetMyBetsResponse = zod.array(GetMyBetsResponseItem);
 
-/**
- * @summary Get all bets for a match (visible after match starts)
- */
 export const GetMatchBetsParams = zod.object({
   matchId: zod.coerce.number(),
 });
@@ -382,9 +436,6 @@ export const GetMatchBetsResponseItem = zod
   );
 export const GetMatchBetsResponse = zod.array(GetMatchBetsResponseItem);
 
-/**
- * @summary Get current leaderboard rankings
- */
 export const GetRankingsResponseItem = zod.object({
   rank: zod.number(),
   userId: zod.number(),
@@ -398,9 +449,6 @@ export const GetRankingsResponseItem = zod.object({
 });
 export const GetRankingsResponse = zod.array(GetRankingsResponseItem);
 
-/**
- * @summary Get current user's ranking details
- */
 export const GetMyRankingResponse = zod
   .object({
     rank: zod.number(),
@@ -436,20 +484,61 @@ export const GetMyRankingResponse = zod
                 match: zod
                   .object({
                     id: zod.number(),
-                    homeTeam: zod.string(),
-                    awayTeam: zod.string(),
-                    homeTeamFlag: zod.string().optional(),
-                    awayTeamFlag: zod.string().optional(),
+                    homeTeamId: zod.number().optional(),
+                    awayTeamId: zod.number().optional(),
+                    homeTeam: zod
+                      .object({
+                        id: zod.number(),
+                        name: zod.string(),
+                        flag: zod.string().optional(),
+                        fifaCode: zod.string(),
+                        groupId: zod.number().optional(),
+                        group: zod
+                          .object({
+                            id: zod.number(),
+                            name: zod.string(),
+                            description: zod.string().optional(),
+                          })
+                          .optional(),
+                      })
+                      .optional(),
+                    awayTeam: zod
+                      .object({
+                        id: zod.number(),
+                        name: zod.string(),
+                        flag: zod.string().optional(),
+                        fifaCode: zod.string(),
+                        groupId: zod.number().optional(),
+                        group: zod
+                          .object({
+                            id: zod.number(),
+                            name: zod.string(),
+                            description: zod.string().optional(),
+                          })
+                          .optional(),
+                      })
+                      .optional(),
+                    homePlaceholder: zod.string().optional(),
+                    awayPlaceholder: zod.string().optional(),
+                    groupId: zod.number().optional(),
+                    group: zod
+                      .object({
+                        id: zod.number(),
+                        name: zod.string(),
+                        description: zod.string().optional(),
+                      })
+                      .optional(),
                     matchDate: zod.date(),
                     stage: zod.enum([
                       "group",
+                      "round_of_32",
                       "round_of_16",
                       "quarterfinal",
                       "semifinal",
-                      "final",
                       "third_place",
+                      "final",
                     ]),
-                    groupName: zod.string().optional(),
+                    matchNumber: zod.number().optional(),
                     venue: zod.string().optional(),
                     homeScore: zod.number().optional(),
                     awayScore: zod.number().optional(),
@@ -465,9 +554,6 @@ export const GetMyRankingResponse = zod
     }),
   );
 
-/**
- * @summary Get current user's bonus bets
- */
 export const GetMyBonusBetsResponse = zod.object({
   id: zod.number(),
   userId: zod.number(),
@@ -480,9 +566,6 @@ export const GetMyBonusBetsResponse = zod.object({
   updatedAt: zod.date(),
 });
 
-/**
- * @summary Submit bonus bets (champion and top scorer predictions)
- */
 export const SubmitBonusBetsBody = zod.object({
   champion: zod.string(),
   topScorer: zod.string().optional(),
@@ -500,9 +583,6 @@ export const SubmitBonusBetsResponse = zod.object({
   updatedAt: zod.date(),
 });
 
-/**
- * @summary Validate an invitation token
- */
 export const ValidateInviteTokenParams = zod.object({
   token: zod.coerce.string(),
 });
@@ -511,3 +591,143 @@ export const ValidateInviteTokenResponse = zod.object({
   valid: zod.boolean(),
   email: zod.string(),
 });
+
+export const createInviteBodyExpiresInDaysDefault = 7;
+
+export const CreateInviteBody = zod.object({
+  email: zod.string().email(),
+  expiresInDays: zod.number().default(createInviteBodyExpiresInDaysDefault),
+});
+
+export const ListInvitesResponseItem = zod.object({
+  id: zod.number(),
+  email: zod.string(),
+  token: zod.string(),
+  used: zod.boolean(),
+  expiresAt: zod.date(),
+  createdAt: zod.date(),
+});
+export const ListInvitesResponse = zod.array(ListInvitesResponseItem);
+
+export const CreateGroupBody = zod.object({
+  name: zod.string(),
+  description: zod.string().optional(),
+});
+
+export const CreateTeamBody = zod.object({
+  name: zod.string(),
+  flag: zod.string().optional(),
+  fifaCode: zod.string(),
+  groupId: zod.number().optional(),
+});
+
+export const CreateMatchBody = zod.object({
+  homeTeamId: zod.number().optional(),
+  awayTeamId: zod.number().optional(),
+  homePlaceholder: zod.string().optional(),
+  awayPlaceholder: zod.string().optional(),
+  groupId: zod.number().optional(),
+  matchDate: zod.date(),
+  stage: zod.enum([
+    "group",
+    "round_of_32",
+    "round_of_16",
+    "quarterfinal",
+    "semifinal",
+    "third_place",
+    "final",
+  ]),
+  matchNumber: zod.number().optional(),
+  venue: zod.string().optional(),
+});
+
+export const UpdateMatchResultParams = zod.object({
+  matchId: zod.coerce.number(),
+});
+
+export const updateMatchResultBodyHomeScoreMin = 0;
+
+export const updateMatchResultBodyAwayScoreMin = 0;
+
+export const UpdateMatchResultBody = zod.object({
+  homeScore: zod.number().min(updateMatchResultBodyHomeScoreMin),
+  awayScore: zod.number().min(updateMatchResultBodyAwayScoreMin),
+  status: zod.enum(["upcoming", "live", "finished"]),
+  homeTeamId: zod.number().optional(),
+  awayTeamId: zod.number().optional(),
+});
+
+export const UpdateMatchResultResponse = zod.object({
+  id: zod.number(),
+  homeTeamId: zod.number().optional(),
+  awayTeamId: zod.number().optional(),
+  homeTeam: zod
+    .object({
+      id: zod.number(),
+      name: zod.string(),
+      flag: zod.string().optional(),
+      fifaCode: zod.string(),
+      groupId: zod.number().optional(),
+      group: zod
+        .object({
+          id: zod.number(),
+          name: zod.string(),
+          description: zod.string().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+  awayTeam: zod
+    .object({
+      id: zod.number(),
+      name: zod.string(),
+      flag: zod.string().optional(),
+      fifaCode: zod.string(),
+      groupId: zod.number().optional(),
+      group: zod
+        .object({
+          id: zod.number(),
+          name: zod.string(),
+          description: zod.string().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+  homePlaceholder: zod.string().optional(),
+  awayPlaceholder: zod.string().optional(),
+  groupId: zod.number().optional(),
+  group: zod
+    .object({
+      id: zod.number(),
+      name: zod.string(),
+      description: zod.string().optional(),
+    })
+    .optional(),
+  matchDate: zod.date(),
+  stage: zod.enum([
+    "group",
+    "round_of_32",
+    "round_of_16",
+    "quarterfinal",
+    "semifinal",
+    "third_place",
+    "final",
+  ]),
+  matchNumber: zod.number().optional(),
+  venue: zod.string().optional(),
+  homeScore: zod.number().optional(),
+  awayScore: zod.number().optional(),
+  status: zod.enum(["upcoming", "live", "finished"]),
+  bettingDeadline: zod.date(),
+  createdAt: zod.date(),
+});
+
+export const ListUsersResponseItem = zod.object({
+  id: zod.number(),
+  email: zod.string(),
+  name: zod.string(),
+  role: zod.enum(["admin", "participant"]),
+  totalPoints: zod.number(),
+  betsSubmitted: zod.number(),
+});
+export const ListUsersResponse = zod.array(ListUsersResponseItem);

@@ -5,8 +5,9 @@
  * Bolão Copa 2026 - World Cup Betting Pool API
  * OpenAPI spec version: 0.2.0
  */
+import type { Group } from "./group";
+import type { Team } from "./team";
 
-export interface InviteValidationResponse {
-  valid: boolean;
-  email: string;
-}
+export type GroupWithTeams = Group & {
+  teams: Team[];
+};

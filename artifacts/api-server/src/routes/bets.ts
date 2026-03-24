@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, matchesTable, betsTable, usersTable } from "@workspace/db";
+import { db, matchesTable, betsTable, usersTable, teamsTable, groupsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { SubmitBetBody } from "@workspace/api-zod";
 import { requireAuth } from "../lib/auth";
@@ -8,6 +8,31 @@ const router = Router();
 
 function getBettingDeadline(matchDate: Date): Date {
   return new Date(matchDate.getTime() - 30 * 60 * 1000);
+}
+
+async function enrichMatch(match: any) {
+  const homeTeam = match.homeTeamId
+    ? (await db.select().from(teamsTable).where(eq(teamsTable.id, match.homeTeamId)))[0]
+    : null;
+  const awayTeam = match.awayTeamId
+    ? (await db.select().from(teamsTable).where(eq(teamsTable.id, match.awayTeamId)))[0]
+    : null;
+  const group = match.groupId
+    ? (await db.select().from(groupsTable).where(eq(groupsTable.id, match.groupId)))[0]
+    : null;
+  return {
+    ...match,
+    homeTeam: homeTeam ?? undefined,
+    awayTeam: awayTeam ?? undefined,
+    group: group ?? undefined,
+    homePlaceholder: match.homePlaceholder ?? undefined,
+    awayPlaceholder: match.awayPlaceholder ?? undefined,
+    homeScore: match.homeScore ?? undefined,
+    awayScore: match.awayScore ?? undefined,
+    matchNumber: match.matchNumber ?? undefined,
+    venue: match.venue ?? undefined,
+    bettingDeadline: getBettingDeadline(match.matchDate),
+  };
 }
 
 router.post("/", requireAuth, async (req, res) => {
@@ -21,39 +46,28 @@ router.post("/", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
 
   try {
-    const [match] = await db
-      .select()
-      .from(matchesTable)
-      .where(eq(matchesTable.id, matchId));
-
+    const [match] = await db.select().from(matchesTable).where(eq(matchesTable.id, matchId));
     if (!match) {
       res.status(404).json({ error: "Not found", message: "Match not found" });
       return;
     }
 
-    const deadline = getBettingDeadline(match.matchDate);
-    if (new Date() > deadline) {
+    if (new Date() > getBettingDeadline(match.matchDate)) {
       res.status(400).json({ error: "Bad request", message: "Betting deadline has passed for this match" });
       return;
     }
 
-    const [existing] = await db
-      .select()
-      .from(betsTable)
+    const [existing] = await db.select().from(betsTable)
       .where(and(eq(betsTable.matchId, matchId), eq(betsTable.userId, userId)));
 
     let bet;
     if (existing) {
-      [bet] = await db
-        .update(betsTable)
+      [bet] = await db.update(betsTable)
         .set({ homeScore, awayScore, updatedAt: new Date() })
         .where(eq(betsTable.id, existing.id))
         .returning();
     } else {
-      [bet] = await db
-        .insert(betsTable)
-        .values({ userId, matchId, homeScore, awayScore })
-        .returning();
+      [bet] = await db.insert(betsTable).values({ userId, matchId, homeScore, awayScore }).returning();
     }
 
     res.json(bet);
@@ -65,57 +79,15 @@ router.post("/", requireAuth, async (req, res) => {
 
 router.get("/my", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
-
   try {
-    const bets = await db
-      .select({
-        id: betsTable.id,
-        userId: betsTable.userId,
-        matchId: betsTable.matchId,
-        homeScore: betsTable.homeScore,
-        awayScore: betsTable.awayScore,
-        points: betsTable.points,
-        exactScore: betsTable.exactScore,
-        correctOutcome: betsTable.correctOutcome,
-        correctGoalDiff: betsTable.correctGoalDiff,
-        createdAt: betsTable.createdAt,
-        updatedAt: betsTable.updatedAt,
-        match: {
-          id: matchesTable.id,
-          homeTeam: matchesTable.homeTeam,
-          awayTeam: matchesTable.awayTeam,
-          homeTeamFlag: matchesTable.homeTeamFlag,
-          awayTeamFlag: matchesTable.awayTeamFlag,
-          matchDate: matchesTable.matchDate,
-          stage: matchesTable.stage,
-          groupName: matchesTable.groupName,
-          venue: matchesTable.venue,
-          homeScore: matchesTable.homeScore,
-          awayScore: matchesTable.awayScore,
-          status: matchesTable.status,
-          createdAt: matchesTable.createdAt,
-        },
+    const bets = await db.select().from(betsTable).where(eq(betsTable.userId, userId));
+    const result = await Promise.all(
+      bets.map(async (b) => {
+        const [match] = await db.select().from(matchesTable).where(eq(matchesTable.id, b.matchId));
+        const enrichedMatch = match ? await enrichMatch(match) : undefined;
+        return { ...b, match: enrichedMatch };
       })
-      .from(betsTable)
-      .leftJoin(matchesTable, eq(betsTable.matchId, matchesTable.id))
-      .where(eq(betsTable.userId, userId));
-
-    const result = bets.map((b) => ({
-      ...b,
-      match: b.match
-        ? {
-            ...b.match,
-            homeTeamFlag: b.match.homeTeamFlag ?? undefined,
-            awayTeamFlag: b.match.awayTeamFlag ?? undefined,
-            groupName: b.match.groupName ?? undefined,
-            venue: b.match.venue ?? undefined,
-            homeScore: b.match.homeScore ?? undefined,
-            awayScore: b.match.awayScore ?? undefined,
-            bettingDeadline: new Date(b.match.matchDate.getTime() - 30 * 60 * 1000),
-          }
-        : undefined,
-    }));
-
+    );
     res.json(result);
   } catch (err) {
     req.log.error({ err }, "Failed to get user bets");
@@ -129,49 +101,26 @@ router.get("/match/:matchId", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Bad request", message: "Invalid match ID" });
     return;
   }
-
   try {
-    const [match] = await db
-      .select()
-      .from(matchesTable)
-      .where(eq(matchesTable.id, matchId));
-
+    const [match] = await db.select().from(matchesTable).where(eq(matchesTable.id, matchId));
     if (!match) {
       res.status(404).json({ error: "Not found", message: "Match not found" });
       return;
     }
 
-    const deadline = getBettingDeadline(match.matchDate);
-    const betsVisible = new Date() > deadline;
-
-    if (!betsVisible) {
+    if (new Date() <= getBettingDeadline(match.matchDate)) {
       res.json([]);
       return;
     }
 
-    const bets = await db
-      .select({
-        id: betsTable.id,
-        userId: betsTable.userId,
-        matchId: betsTable.matchId,
-        homeScore: betsTable.homeScore,
-        awayScore: betsTable.awayScore,
-        points: betsTable.points,
-        exactScore: betsTable.exactScore,
-        correctOutcome: betsTable.correctOutcome,
-        correctGoalDiff: betsTable.correctGoalDiff,
-        createdAt: betsTable.createdAt,
-        updatedAt: betsTable.updatedAt,
-        user: {
-          id: usersTable.id,
-          name: usersTable.name,
-        },
-      })
-      .from(betsTable)
-      .leftJoin(usersTable, eq(betsTable.userId, usersTable.id))
-      .where(eq(betsTable.matchId, matchId));
+    const bets = await db.select().from(betsTable).where(eq(betsTable.matchId, matchId));
+    const userIds = [...new Set(bets.map((b) => b.userId))];
+    const users = await Promise.all(
+      userIds.map((id) => db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, id)))
+    );
+    const userMap = Object.fromEntries(users.flat().map((u) => [u.id, u]));
 
-    res.json(bets);
+    res.json(bets.map((b) => ({ ...b, user: userMap[b.userId] })));
   } catch (err) {
     req.log.error({ err }, "Failed to get match bets");
     res.status(500).json({ error: "Internal server error" });

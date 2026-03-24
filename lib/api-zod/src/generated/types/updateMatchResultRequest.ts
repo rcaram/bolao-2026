@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * Bolão Copa 2026 - World Cup Betting Pool API
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 import type { UpdateMatchResultRequestStatus } from "./updateMatchResultRequestStatus";
 
@@ -13,4 +13,6 @@ export interface UpdateMatchResultRequest {
   /** @minimum 0 */
   awayScore: number;
   status: UpdateMatchResultRequestStatus;
+  homeTeamId?: number;
+  awayTeamId?: number;
 }

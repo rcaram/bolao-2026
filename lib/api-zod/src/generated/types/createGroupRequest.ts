@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export interface InviteValidationResponse {
-  valid: boolean;
-  email: string;
+export interface CreateGroupRequest {
+  name: string;
+  description?: string;
 }

@@ -3,20 +3,26 @@
  * Do not edit manually.
  * Api
  * Bolão Copa 2026 - World Cup Betting Pool API
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
+import type { Group } from "./group";
 import type { MatchStage } from "./matchStage";
 import type { MatchStatus } from "./matchStatus";
+import type { Team } from "./team";
 
 export interface Match {
   id: number;
-  homeTeam: string;
-  awayTeam: string;
-  homeTeamFlag?: string;
-  awayTeamFlag?: string;
+  homeTeamId?: number;
+  awayTeamId?: number;
+  homeTeam?: Team;
+  awayTeam?: Team;
+  homePlaceholder?: string;
+  awayPlaceholder?: string;
+  groupId?: number;
+  group?: Group;
   matchDate: Date;
   stage: MatchStage;
-  groupName?: string;
+  matchNumber?: number;
   venue?: string;
   homeScore?: number;
   awayScore?: number;

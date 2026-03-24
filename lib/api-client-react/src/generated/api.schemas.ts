@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * Bolão Copa 2026 - World Cup Betting Pool API
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 export interface HealthStatus {
   status: string;
@@ -68,6 +68,37 @@ export interface UserSummary {
   betsSubmitted: number;
 }
 
+export interface Group {
+  id: number;
+  name: string;
+  description?: string;
+}
+
+export interface Team {
+  id: number;
+  name: string;
+  flag?: string;
+  fifaCode: string;
+  groupId?: number;
+  group?: Group;
+}
+
+export type GroupWithTeams = Group & {
+  teams: Team[];
+};
+
+export interface CreateGroupRequest {
+  name: string;
+  description?: string;
+}
+
+export interface CreateTeamRequest {
+  name: string;
+  flag?: string;
+  fifaCode: string;
+  groupId?: number;
+}
+
 export interface CreateInviteRequest {
   email: string;
   expiresInDays?: number;
@@ -97,21 +128,23 @@ export type CreateMatchRequestStage =
 
 export const CreateMatchRequestStage = {
   group: "group",
+  round_of_32: "round_of_32",
   round_of_16: "round_of_16",
   quarterfinal: "quarterfinal",
   semifinal: "semifinal",
-  final: "final",
   third_place: "third_place",
+  final: "final",
 } as const;
 
 export interface CreateMatchRequest {
-  homeTeam: string;
-  awayTeam: string;
-  homeTeamFlag?: string;
-  awayTeamFlag?: string;
+  homeTeamId?: number;
+  awayTeamId?: number;
+  homePlaceholder?: string;
+  awayPlaceholder?: string;
+  groupId?: number;
   matchDate: string;
   stage: CreateMatchRequestStage;
-  groupName?: string;
+  matchNumber?: number;
   venue?: string;
 }
 
@@ -130,17 +163,20 @@ export interface UpdateMatchResultRequest {
   /** @minimum 0 */
   awayScore: number;
   status: UpdateMatchResultRequestStatus;
+  homeTeamId?: number;
+  awayTeamId?: number;
 }
 
 export type MatchStage = (typeof MatchStage)[keyof typeof MatchStage];
 
 export const MatchStage = {
   group: "group",
+  round_of_32: "round_of_32",
   round_of_16: "round_of_16",
   quarterfinal: "quarterfinal",
   semifinal: "semifinal",
-  final: "final",
   third_place: "third_place",
+  final: "final",
 } as const;
 
 export type MatchStatus = (typeof MatchStatus)[keyof typeof MatchStatus];
@@ -153,13 +189,17 @@ export const MatchStatus = {
 
 export interface Match {
   id: number;
-  homeTeam: string;
-  awayTeam: string;
-  homeTeamFlag?: string;
-  awayTeamFlag?: string;
+  homeTeamId?: number;
+  awayTeamId?: number;
+  homeTeam?: Team;
+  awayTeam?: Team;
+  homePlaceholder?: string;
+  awayPlaceholder?: string;
+  groupId?: number;
+  group?: Group;
   matchDate: string;
   stage: MatchStage;
-  groupName?: string;
+  matchNumber?: number;
   venue?: string;
   homeScore?: number;
   awayScore?: number;
@@ -240,9 +280,14 @@ export interface BonusBet {
   updatedAt: string;
 }
 
+export type GetTeamsParams = {
+  groupId?: number;
+};
+
 export type GetMatchesParams = {
   stage?: GetMatchesStage;
   status?: GetMatchesStatus;
+  groupId?: number;
 };
 
 export type GetMatchesStage =
@@ -250,11 +295,12 @@ export type GetMatchesStage =
 
 export const GetMatchesStage = {
   group: "group",
+  round_of_32: "round_of_32",
   round_of_16: "round_of_16",
   quarterfinal: "quarterfinal",
   semifinal: "semifinal",
-  final: "final",
   third_place: "third_place",
+  final: "final",
 } as const;
 
 export type GetMatchesStatus =

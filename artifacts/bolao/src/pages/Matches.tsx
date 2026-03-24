@@ -3,7 +3,7 @@ import { useGetMatches } from "@workspace/api-client-react";
 import { Layout } from "@/components/Layout";
 import { MatchCard } from "@/components/MatchCard";
 
-const STAGES = ["all", "group", "round_of_16", "quarterfinal", "semifinal", "final", "third_place"];
+const STAGES = ["all", "group", "round_of_32", "round_of_16", "quarterfinal", "semifinal", "third_place", "final"];
 
 export default function Matches() {
   const [stageFilter, setStageFilter] = useState<any>("all");

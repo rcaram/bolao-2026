@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { type MatchWithBet, useSubmitBet, getGetMatchesQueryKey } from "@workspace/api-client-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,18 @@ import { useQueryClient } from "@tanstack/react-query";
 import { formatStage, getTimeUntil, isBettingLocked, formatDate } from "@/lib/utils";
 import { Clock, CheckCircle2, ChevronUp, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
+
+function getTeamName(match: MatchWithBet, side: "home" | "away"): string {
+  if (side === "home") {
+    return match.homeTeam?.name ?? match.homePlaceholder ?? "TBD";
+  }
+  return match.awayTeam?.name ?? match.awayPlaceholder ?? "TBD";
+}
+
+function getTeamFlag(match: MatchWithBet, side: "home" | "away"): string {
+  if (side === "home") return match.homeTeam?.flag ?? "🏳️";
+  return match.awayTeam?.flag ?? "🏳️";
+}
 
 export function MatchCard({ match }: { match: MatchWithBet }) {
   const locked = isBettingLocked(match.bettingDeadline) || match.status !== "upcoming";
@@ -28,6 +40,7 @@ export function MatchCard({ match }: { match: MatchWithBet }) {
   };
 
   const hasScoreResult = match.homeScore !== undefined && match.awayScore !== undefined;
+  const groupLabel = match.group ? `Group ${match.group.name}` : null;
 
   return (
     <motion.div
@@ -37,7 +50,9 @@ export function MatchCard({ match }: { match: MatchWithBet }) {
     >
       <Card className="flex flex-col group hover:border-primary/30 transition-colors">
         <div className="bg-secondary/50 px-4 py-2 flex items-center justify-between border-b border-white/5 text-xs font-display uppercase tracking-wider">
-          <span className="text-muted-foreground">{formatStage(match.stage)}</span>
+          <span className="text-muted-foreground">
+            {groupLabel ? `${groupLabel} • ` : ""}{formatStage(match.stage)}
+          </span>
           {locked ? (
             <span className={match.status === "finished" ? "text-muted-foreground" : "text-accent animate-pulse"}>
               {match.status === "finished" ? "Finished" : "Live"}
@@ -57,8 +72,12 @@ export function MatchCard({ match }: { match: MatchWithBet }) {
           <div className="flex items-center justify-between gap-4">
             {/* Home Team */}
             <div className="flex-1 flex flex-col items-center gap-2">
-              <span className="text-4xl drop-shadow-lg">{match.homeTeamFlag || "🎌"}</span>
-              <span className="font-display font-bold text-center leading-tight truncate w-full">{match.homeTeam}</span>
+              <span className="text-4xl drop-shadow-lg">
+                {match.homeTeam ? getTeamFlag(match, "home") : "🏳️"}
+              </span>
+              <span className="font-display font-bold text-center leading-tight truncate w-full text-center">
+                {getTeamName(match, "home")}
+              </span>
             </div>
 
             {/* Score Center */}
@@ -89,8 +108,12 @@ export function MatchCard({ match }: { match: MatchWithBet }) {
 
             {/* Away Team */}
             <div className="flex-1 flex flex-col items-center gap-2">
-              <span className="text-4xl drop-shadow-lg">{match.awayTeamFlag || "🎌"}</span>
-              <span className="font-display font-bold text-center leading-tight truncate w-full">{match.awayTeam}</span>
+              <span className="text-4xl drop-shadow-lg">
+                {match.awayTeam ? getTeamFlag(match, "away") : "🏳️"}
+              </span>
+              <span className="font-display font-bold text-center leading-tight truncate w-full text-center">
+                {getTeamName(match, "away")}
+              </span>
             </div>
           </div>
 

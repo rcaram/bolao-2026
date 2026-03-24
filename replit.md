@@ -69,14 +69,21 @@ artifacts-monorepo/
 └── package.json
 ```
 
-## Database Schema
+## Database Schema (Normalized)
 
+- `groups` — id, name (A-L), description
+- `teams` — id, name, flag (emoji), fifa_code (unique), group_id (FK → groups)
 - `users` — id, email, password_hash, name, role (admin|participant)
 - `invites` — id, email, token, used, expires_at
-- `matches` — id, home_team, away_team, flags, match_date, stage, group_name, venue, scores, status
+- `matches` — id, home_team_id (FK → teams, nullable), away_team_id (FK → teams, nullable), home_placeholder, away_placeholder, group_id (FK → groups, nullable), match_date, stage (group|round_of_32|round_of_16|quarterfinal|semifinal|third_place|final), match_number, venue, home_score, away_score, status
 - `bets` — id, user_id, match_id, home_score, away_score, points, exact_score, correct_outcome, correct_goal_diff
 - `bonus_bets` — id, user_id, champion, top_scorer, champion_points, top_scorer_points, locked
 - `sessions` — sid, sess, expire (auto-created by connect-pg-simple)
+
+### Seeded Data
+- 12 groups (A-L), 4 teams each = 48 teams total (World Cup 2026 format)
+- 12 group stage matches + 7 knockout placeholder matches
+- Admin and 4 sample participant accounts
 
 ## TypeScript & Composite Projects
 
@@ -100,7 +107,7 @@ Express 5 API server. Routes live in `src/routes/` and use `@workspace/api-zod` 
 
 - Entry: `src/index.ts` — reads `PORT`, starts Express
 - App setup: `src/app.ts` — mounts CORS, session, JSON/urlencoded parsing, routes at `/api`
-- Routes: `/api/auth`, `/api/matches`, `/api/bets`, `/api/rankings`, `/api/admin`, `/api/bonuses`, `/api/invite`
+- Routes: `/api/auth`, `/api/groups`, `/api/teams`, `/api/matches`, `/api/bets`, `/api/rankings`, `/api/admin`, `/api/bonuses`, `/api/invite`
 - Auth: `src/lib/auth.ts` — `requireAuth` and `requireAdmin` middleware
 - Scoring: `src/lib/scoring.ts` — `calculateBetPoints()` function
 
