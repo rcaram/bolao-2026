@@ -38,7 +38,7 @@ export default function Matches() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {[1, 2, 3, 4].map(i => <div key={i} className="h-64 rounded-2xl bg-secondary/50 animate-pulse" />)}
           </div>
-        ) : matches?.length ? (
+        ) : Array.isArray(matches) && matches.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {matches.map(match => (
               <MatchCard key={match.id} match={match} />

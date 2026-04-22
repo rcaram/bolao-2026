@@ -110,7 +110,7 @@ export default function Profile() {
                   <div key={bet.id} className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl border border-white/5">
                     <div>
                       <p className="font-display">
-                        {bet.match?.homeTeam} vs {bet.match?.awayTeam}
+                        {bet.match?.homeTeam?.name ?? bet.match?.homePlaceholder ?? "TBD"} vs {bet.match?.awayTeam?.name ?? bet.match?.awayPlaceholder ?? "TBD"}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         Predicted: {bet.homeScore}-{bet.awayScore}

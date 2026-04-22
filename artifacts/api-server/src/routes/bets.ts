@@ -1,7 +1,7 @@
-import { Router } from "express";
-import { db, matchesTable, betsTable, usersTable, teamsTable, groupsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
 import { SubmitBetBody } from "@workspace/api-zod";
+import { betsTable, db, groupsTable, matchesTable, teamsTable, usersTable } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
+import { Router } from "express";
 import { requireAuth } from "../lib/auth";
 
 const router = Router();
@@ -96,7 +96,7 @@ router.get("/my", requireAuth, async (req, res) => {
 });
 
 router.get("/match/:matchId", requireAuth, async (req, res) => {
-  const matchId = parseInt(req.params.matchId);
+  const matchId = parseInt(req.params.matchId as string);
   if (isNaN(matchId)) {
     res.status(400).json({ error: "Bad request", message: "Invalid match ID" });
     return;

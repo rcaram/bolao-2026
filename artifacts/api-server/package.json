@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
-    "start": "node --enable-source-maps ./dist/index.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "start": "node --env-file=../../.env --enable-source-maps ./dist/index.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch --runInBand"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",
@@ -29,10 +31,15 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/express-session": "^1.18.2",
+    "@types/jest": "^30.0.0",
     "@types/node": "catalog:",
+    "@types/supertest": "^7.2.0",
     "esbuild": "^0.27.3",
     "esbuild-plugin-pino": "^2.3.3",
+    "jest": "^30.3.0",
     "pino-pretty": "^13",
-    "thread-stream": "3.1.0"
+    "supertest": "^7.2.2",
+    "thread-stream": "3.1.0",
+    "ts-jest": "^29.4.9"
   }
 }

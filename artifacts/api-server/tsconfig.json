@@ -3,9 +3,16 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"]
+    "types": [
+      "node",
+      "jest"
+    ],
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
   },
-  "include": ["src"],
+  "include": [
+    "src"
+  ],
   "references": [
     {
       "path": "../../lib/db"

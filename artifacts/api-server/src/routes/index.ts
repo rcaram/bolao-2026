@@ -9,6 +9,7 @@ import rankingsRouter from "./rankings";
 import adminRouter from "./admin";
 import bonusesRouter from "./bonuses";
 import inviteRouter from "./invite";
+import standingsRouter from "./standings";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use("/rankings", rankingsRouter);
 router.use("/admin", adminRouter);
 router.use("/bonuses", bonusesRouter);
 router.use("/invite", inviteRouter);
+router.use("/standings", standingsRouter);
 
 export default router;

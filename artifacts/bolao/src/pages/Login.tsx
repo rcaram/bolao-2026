@@ -115,7 +115,7 @@ export default function Login() {
 
               {(login.error || register.error) && (
                 <div className="p-3 bg-destructive/20 border border-destructive/50 text-destructive text-sm rounded-lg text-center">
-                  {(login.error || register.error)?.error || "Authentication failed"}
+                  {((login.error || register.error) as any)?.error || "Authentication failed"}
                 </div>
               )}
 

@@ -1,12 +1,12 @@
 import React from "react";
-import { useGetRankings, useGetMe } from "@workspace/api-client-react";
+import { useGetRankings, useGetMe, getGetRankingsQueryKey } from "@workspace/api-client-react";
 import { Layout } from "@/components/Layout";
 import { Card } from "@/components/ui/card";
 import { Trophy, Target, Award } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function Leaderboard() {
-  const { data: rankings, isLoading } = useGetRankings({ query: { refetchInterval: 30000 } });
+  const { data: rankings, isLoading } = useGetRankings({ query: { queryKey: getGetRankingsQueryKey(), refetchInterval: 30000 } });
   const { data: currentUser } = useGetMe();
 
   return (
@@ -52,7 +52,7 @@ export default function Leaderboard() {
                     </tr>
                   ))
                 ) : (
-                  rankings?.map((entry, idx) => {
+                  (Array.isArray(rankings) ? rankings : []).map((entry, idx) => {
                     const isMe = entry.userId === currentUser?.id;
                     const isTop3 = entry.rank <= 3;
                     

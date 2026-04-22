@@ -1,5 +1,5 @@
 import React from "react";
-import { useGetMatches, useGetMyRanking, useGetMe } from "@workspace/api-client-react";
+import { useGetMatches, useGetMyRanking, useGetMe, getGetMyRankingQueryKey } from "@workspace/api-client-react";
 import { Layout } from "@/components/Layout";
 import { MatchCard } from "@/components/MatchCard";
 import { Card } from "@/components/ui/card";
@@ -8,10 +8,10 @@ import { Link } from "wouter";
 
 export default function Dashboard() {
   const { data: user } = useGetMe();
-  const { data: ranking } = useGetMyRanking({ query: { refetchInterval: 30000 } });
+  const { data: ranking } = useGetMyRanking({ query: { queryKey: getGetMyRankingQueryKey(), refetchInterval: 30000 } });
   const { data: matches, isLoading } = useGetMatches({ status: "upcoming" });
 
-  const upcomingMatches = matches?.slice(0, 4) || [];
+  const upcomingMatches = Array.isArray(matches) ? matches.slice(0, 4) : [];
 
   return (
     <Layout>

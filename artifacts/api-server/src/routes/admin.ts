@@ -1,17 +1,18 @@
-import { Router } from "express";
-import crypto from "crypto";
-import { db, invitesTable, matchesTable, betsTable, usersTable, teamsTable, groupsTable, scoringConfigTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
 import {
+  CreateGroupBody,
   CreateInviteBody,
   CreateMatchBody,
-  UpdateMatchResultBody,
-  CreateGroupBody,
   CreateTeamBody,
+  UpdateMatchResultBody,
 } from "@workspace/api-zod";
+import { betsTable, db, groupsTable, importSchedule, invitesTable, matchesTable, scoringConfigTable, teamsTable, usersTable } from "@workspace/db";
+import crypto from "crypto";
+import { eq } from "drizzle-orm";
+import { Router } from "express";
 import { requireAdmin } from "../lib/auth";
+import { resolveTeamFromPlaceholder } from "../lib/results";
 import { calculateBetPoints, DEFAULT_SCORING_CONFIG, type ScoringConfig } from "../lib/scoring";
-import { z } from "zod/v4";
+import { calculateGroupStandings, type TeamStanding } from "./standings";
 
 const router = Router();
 router.use(requireAdmin);
@@ -31,6 +32,90 @@ async function getConfig(): Promise<ScoringConfig> {
   };
 }
 
+// ─── R32 Auto-Resolution ─────────────────────────────────────────────────────
+
+/**
+ * After a group-stage match is marked "finished", check whether any
+ * Round-of-32 placeholder slots can be filled automatically.
+ *
+ * Placeholders follow these formats (set in import-schedule.ts):
+ *   "Winner Group A"        → 1st in Group A
+ *   "Runner-up Group A"     → 2nd in Group A
+ *   "Best 3rd (A/B/C/D/F)"  → best 3rd-place team from those groups
+ */
+async function resolveR32Placeholders(logger: any): Promise<void> {
+  // 1. Get all groups and build a lookup name → id
+  const groups = await db.select().from(groupsTable);
+  const groupByName: Record<string, typeof groups[0]> = {};
+  const groupById: Record<number, typeof groups[0]> = {};
+  for (const g of groups) {
+    groupByName[g.name] = g;
+    groupById[g.id] = g;
+  }
+
+  // 2. Check which groups are fully completed
+  const allGroupMatches = await db.select().from(matchesTable).where(eq(matchesTable.stage, "group"));
+  const groupMatchesByGroupId: Record<number, typeof allGroupMatches> = {};
+  for (const m of allGroupMatches) {
+    if (!m.groupId) continue;
+    if (!groupMatchesByGroupId[m.groupId]) groupMatchesByGroupId[m.groupId] = [];
+    groupMatchesByGroupId[m.groupId].push(m);
+  }
+
+  const completedGroupIds = new Set<number>();
+  for (const [gId, matches] of Object.entries(groupMatchesByGroupId)) {
+    const groupId = Number(gId);
+    if (matches.length > 0 && matches.every(m => m.status === "finished")) {
+      completedGroupIds.add(groupId);
+    }
+  }
+
+  if (completedGroupIds.size === 0) return;
+
+  // 3. Calculate standings for completed groups
+  const standingsByGroupName: Record<string, TeamStanding[]> = {};
+  for (const gId of completedGroupIds) {
+    const group = groupById[gId];
+    if (!group) continue;
+    standingsByGroupName[group.name] = await calculateGroupStandings(gId);
+  }
+
+  // 4. Get all R32 matches that still have unresolved placeholders
+  const r32Matches = await db.select().from(matchesTable).where(eq(matchesTable.stage, "round_of_32"));
+
+  for (const r32 of r32Matches) {
+    let newHomeTeamId = r32.homeTeamId;
+    let newAwayTeamId = r32.awayTeamId;
+
+    // Resolve home placeholder
+    if (!r32.homeTeamId && r32.homePlaceholder) {
+      const resolved = resolveTeamFromPlaceholder(r32.homePlaceholder, standingsByGroupName, completedGroupIds, groupByName);
+      if (resolved) newHomeTeamId = resolved;
+    }
+
+    // Resolve away placeholder
+    if (!r32.awayTeamId && r32.awayPlaceholder) {
+      const resolved = resolveTeamFromPlaceholder(r32.awayPlaceholder, standingsByGroupName, completedGroupIds, groupByName);
+      if (resolved) newAwayTeamId = resolved;
+    }
+
+    // Update if anything changed
+    if (newHomeTeamId !== r32.homeTeamId || newAwayTeamId !== r32.awayTeamId) {
+      const updateVals: Record<string, any> = {};
+      if (newHomeTeamId !== r32.homeTeamId) updateVals.homeTeamId = newHomeTeamId;
+      if (newAwayTeamId !== r32.awayTeamId) updateVals.awayTeamId = newAwayTeamId;
+
+      await db.update(matchesTable).set(updateVals).where(eq(matchesTable.id, r32.id));
+      logger.info(
+        { matchNumber: r32.matchNumber, homeTeamId: newHomeTeamId, awayTeamId: newAwayTeamId },
+        "R32 match teams auto-resolved"
+      );
+    }
+  }
+}
+
+
+
 // ─── Scoring Config ──────────────────────────────────────────────────────────
 
 router.get("/scoring-config", async (req, res) => {
@@ -42,27 +127,29 @@ router.get("/scoring-config", async (req, res) => {
   }
 });
 
-const ScoringConfigBody = z.object({
-  exactScore: z.number().int().min(0),
-  correctOutcomeGoalDiff: z.number().int().min(0),
-  correctOutcome: z.number().int().min(0),
-  wrongOutcome: z.number().int().min(0),
-  bonusChampion: z.number().int().min(0),
-  bonusTopScorer: z.number().int().min(0),
-});
+function parseScoringConfigBody(body: any): ScoringConfig | null {
+  const fields: (keyof ScoringConfig)[] = ["exactScore", "correctOutcomeGoalDiff", "correctOutcome", "wrongOutcome", "bonusChampion", "bonusTopScorer"];
+  const result: any = {};
+  for (const f of fields) {
+    const v = Number(body[f]);
+    if (!Number.isInteger(v) || v < 0) return null;
+    result[f] = v;
+  }
+  return result as ScoringConfig;
+}
 
 router.put("/scoring-config", async (req, res) => {
-  const parsed = ScoringConfigBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Bad request", message: "Invalid scoring config" });
+  const data = parseScoringConfigBody(req.body);
+  if (!data) {
+    res.status(400).json({ error: "Bad request", message: "Invalid scoring config — all fields must be non-negative integers" });
     return;
   }
   try {
     const [existing] = await db.select({ id: scoringConfigTable.id }).from(scoringConfigTable).where(eq(scoringConfigTable.id, 1));
     if (existing) {
-      await db.update(scoringConfigTable).set({ ...parsed.data, updatedAt: new Date() }).where(eq(scoringConfigTable.id, 1));
+      await db.update(scoringConfigTable).set({ ...data, updatedAt: new Date() }).where(eq(scoringConfigTable.id, 1));
     } else {
-      await db.insert(scoringConfigTable).values({ id: 1, ...parsed.data });
+      await db.insert(scoringConfigTable).values({ id: 1, ...data });
     }
     res.json(await getConfig());
   } catch (err) {
@@ -226,6 +313,15 @@ router.put("/matches/:matchId/result", async (req, res) => {
           updatedAt: new Date(),
         }).where(eq(betsTable.id, bet.id));
       }
+
+      // Auto-resolve R32 placeholders when group-stage matches finish
+      if (updatedMatch.stage === "group") {
+        try {
+          await resolveR32Placeholders(req.log);
+        } catch (resolveErr) {
+          req.log.error({ err: resolveErr }, "Failed to auto-resolve R32 placeholders (non-fatal)");
+        }
+      }
     }
 
     res.json({
@@ -235,6 +331,21 @@ router.put("/matches/:matchId/result", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to update match result");
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── Import Schedule ─────────────────────────────────────────────────────────
+
+router.post("/import-schedule", async (req, res) => {
+  try {
+    const result = await importSchedule();
+    res.json({
+      message: "FIFA 2026 schedule imported successfully",
+      ...result,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to import schedule");
+    res.status(500).json({ error: "Internal server error", message: String(err) });
   }
 });
 
