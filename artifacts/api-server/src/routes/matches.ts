@@ -38,7 +38,7 @@ async function enrichMatch(match: any) {
 router.get("/", async (req, res) => {
   try {
     const queryParsed = GetMatchesQueryParams.safeParse(req.query);
-    const { stage, status, groupId } = queryParsed.success ? queryParsed.data : {};
+    const { stage, status, groupId, bolaoId } = queryParsed.success ? queryParsed.data : {};
 
     const conditions = [];
     if (stage) conditions.push(eq(matchesTable.stage, stage as any));
@@ -51,8 +51,11 @@ router.get("/", async (req, res) => {
 
     const userId = req.session?.userId;
     let userBetsMap: Record<number, any> = {};
-    if (userId) {
-      const userBets = await db.select().from(betsTable).where(eq(betsTable.userId, userId));
+    if (userId && bolaoId) {
+      const userBets = await db
+        .select()
+        .from(betsTable)
+        .where(and(eq(betsTable.userId, userId), eq(betsTable.bolaoId, bolaoId)));
       userBets.forEach((b) => { userBetsMap[b.matchId] = b; });
     }
 
@@ -83,10 +86,12 @@ router.get("/:matchId", async (req, res) => {
     const enriched = await enrichMatch(match);
 
     const userId = req.session?.userId;
+    const parsedBolaoId = Number.parseInt((req.query.bolaoId as string | undefined) ?? "", 10);
+    const bolaoId = Number.isNaN(parsedBolaoId) ? null : parsedBolaoId;
     let userBet = undefined;
-    if (userId) {
+    if (userId && bolaoId) {
       const [bet] = await db.select().from(betsTable)
-        .where(and(eq(betsTable.matchId, matchId), eq(betsTable.userId, userId)));
+        .where(and(eq(betsTable.matchId, matchId), eq(betsTable.userId, userId), eq(betsTable.bolaoId, bolaoId)));
       userBet = bet;
     }
 

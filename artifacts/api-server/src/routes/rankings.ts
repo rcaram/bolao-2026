@@ -1,14 +1,20 @@
 import { Router } from "express";
-import { db, usersTable, betsTable, matchesTable, bonusBetsTable, teamsTable, groupsTable } from "@workspace/db";
-import { eq, count } from "drizzle-orm";
+import { db, usersTable, betsTable, matchesTable, bonusBetsTable, teamsTable, groupsTable, bolaoMembersTable } from "@workspace/db";
+import { and, eq, count } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
+import { getBolaoIdFromParams, requireBolaoMember } from "../lib/bolao-auth";
 
-const router = Router();
+const router = Router({ mergeParams: true });
+router.use(requireAuth, requireBolaoMember);
 
-async function buildRankings() {
-  const users = await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable);
-  const allBets = await db.select().from(betsTable);
-  const allBonusBets = await db.select().from(bonusBetsTable);
+async function buildRankings(bolaoId: number) {
+  const users = await db
+    .select({ id: usersTable.id, name: usersTable.name })
+    .from(usersTable)
+    .innerJoin(bolaoMembersTable, eq(usersTable.id, bolaoMembersTable.userId))
+    .where(eq(bolaoMembersTable.bolaoId, bolaoId));
+  const allBets = await db.select().from(betsTable).where(eq(betsTable.bolaoId, bolaoId));
+  const allBonusBets = await db.select().from(bonusBetsTable).where(eq(bonusBetsTable.bolaoId, bolaoId));
   const [{ value: totalMatches }] = await db.select({ value: count() }).from(matchesTable);
 
   const bonusMap: Record<number, { championPoints: number; topScorerPoints: number }> = {};
@@ -63,25 +69,38 @@ async function enrichMatch(match: any) {
 }
 
 router.get("/", async (req, res) => {
+  const bolaoId = getBolaoIdFromParams(req);
+  if (!bolaoId) {
+    res.status(400).json({ error: "Bad request", message: "Invalid bolao ID" });
+    return;
+  }
   try {
-    res.json(await buildRankings());
+    res.json(await buildRankings(bolaoId));
   } catch (err) {
     req.log.error({ err }, "Failed to get rankings");
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-router.get("/my", requireAuth, async (req, res) => {
+router.get("/my", async (req, res) => {
   const userId = req.session.userId!;
+  const bolaoId = getBolaoIdFromParams(req);
+  if (!bolaoId) {
+    res.status(400).json({ error: "Bad request", message: "Invalid bolao ID" });
+    return;
+  }
   try {
-    const rankings = await buildRankings();
+    const rankings = await buildRankings(bolaoId);
     const myRank = rankings.find((r) => r.userId === userId);
     if (!myRank) {
       res.status(404).json({ error: "Not found", message: "User not in rankings" });
       return;
     }
 
-    const bets = await db.select().from(betsTable).where(eq(betsTable.userId, userId));
+    const bets = await db
+      .select()
+      .from(betsTable)
+      .where(and(eq(betsTable.userId, userId), eq(betsTable.bolaoId, bolaoId)));
     const recentBets = await Promise.all(
       bets.map(async (b) => {
         const [match] = await db.select().from(matchesTable).where(eq(matchesTable.id, b.matchId));

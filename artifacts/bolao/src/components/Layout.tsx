@@ -4,10 +4,12 @@ import { cn } from "@/lib/utils";
 import { Trophy, CalendarDays, BarChart3, User, ShieldAlert, LogOut } from "lucide-react";
 import { useGetMe, useLogout } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useBolaoContext } from "@/lib/bolao-context";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { data: user } = useGetMe();
+  const { boloes, selectedBolaoId, setSelectedBolaoId } = useBolaoContext();
   const queryClient = useQueryClient();
   const logout = useLogout({
     mutation: {
@@ -23,6 +25,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/matches", label: "Matches", icon: CalendarDays },
     { href: "/leaderboard", label: "Ranking", icon: BarChart3 },
     { href: "/profile", label: "Profile", icon: User },
+    { href: "/boloes", label: "Boloes", icon: Trophy },
   ];
 
   if (user?.role === "admin") {
@@ -62,6 +65,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="p-4 border-t border-white/5">
+          <div className="px-4 py-2 mb-2 rounded-xl bg-secondary/50">
+            <label className="text-xs text-muted-foreground block mb-1">Bolao ativo</label>
+            <select
+              className="w-full bg-background/80 rounded-md h-9 px-2 text-sm"
+              value={selectedBolaoId ?? ""}
+              onChange={(event) => {
+                const value = Number.parseInt(event.target.value, 10);
+                setSelectedBolaoId(Number.isNaN(value) ? null : value);
+              }}
+            >
+              {boloes.map((bolao) => (
+                <option key={bolao.id} value={bolao.id}>
+                  {bolao.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="px-4 py-3 mb-2 rounded-xl bg-secondary/50">
             <p className="text-sm font-medium truncate">{user?.name}</p>
             <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
@@ -95,6 +115,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </header>
 
         <div className="p-4 md:p-8 lg:p-10 max-w-7xl mx-auto">
+          {boloes.length === 0 && (
+            <div className="mb-6 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4 text-sm">
+              Sem bolao selecionado. <Link href="/boloes" className="text-primary underline">Crie ou entre em um bolao</Link>.
+            </div>
+          )}
           {children}
         </div>
       </main>

@@ -1,9 +1,11 @@
-import { pgTable, text, serial, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { boloesTable } from "./boloes";
 
 export const invitesTable = pgTable("invites", {
   id: serial("id").primaryKey(),
+  bolaoId: integer("bolao_id").references(() => boloesTable.id, { onDelete: "cascade" }),
   email: text("email").notNull(),
   token: text("token").notNull().unique(),
   used: boolean("used").notNull().default(false),

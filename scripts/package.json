@@ -6,11 +6,13 @@
   "scripts": {
     "hello": "tsx --env-file=../.env ./src/hello.ts",
     "seed": "tsx --env-file=../.env ./src/seed.ts",
+    "backfill:boloes": "tsx --env-file=../.env ./src/backfill-boloes.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@workspace/db": "workspace:*",
-    "bcryptjs": "^3.0.2"
+    "bcryptjs": "^3.0.2",
+    "drizzle-orm": "catalog:"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

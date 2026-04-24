@@ -1,15 +1,33 @@
 import React from "react";
-import { useGetMatches, useGetMyRanking, useGetMe, getGetMyRankingQueryKey } from "@workspace/api-client-react";
+import {
+  useGetMatches,
+  useGetMyRanking,
+  useGetMe,
+  getGetMyRankingQueryKey,
+  useGetBolaoScoringConfig,
+  getGetBolaoScoringConfigQueryKey,
+  getGetMatchesQueryKey,
+} from "@workspace/api-client-react";
 import { Layout } from "@/components/Layout";
 import { MatchCard } from "@/components/MatchCard";
 import { Card } from "@/components/ui/card";
 import { Trophy, Target, Star, ChevronRight, Info } from "lucide-react";
 import { Link } from "wouter";
+import { useBolaoContext } from "@/lib/bolao-context";
 
 export default function Dashboard() {
+  const { selectedBolaoId } = useBolaoContext();
   const { data: user } = useGetMe();
-  const { data: ranking } = useGetMyRanking({ query: { queryKey: getGetMyRankingQueryKey(), refetchInterval: 30000 } });
-  const { data: matches, isLoading } = useGetMatches({ status: "upcoming" });
+  const { data: ranking } = useGetMyRanking(selectedBolaoId ?? 0, {
+    query: { queryKey: getGetMyRankingQueryKey(selectedBolaoId ?? 0), refetchInterval: 30000, enabled: selectedBolaoId !== null },
+  });
+  const { data: scoringConfig } = useGetBolaoScoringConfig(selectedBolaoId ?? 0, {
+    query: { queryKey: getGetBolaoScoringConfigQueryKey(selectedBolaoId ?? 0), enabled: selectedBolaoId !== null },
+  });
+  const { data: matches, isLoading } = useGetMatches(
+    { status: "upcoming", bolaoId: selectedBolaoId ?? undefined },
+    { query: { queryKey: getGetMatchesQueryKey({ status: "upcoming", bolaoId: selectedBolaoId ?? undefined }), enabled: selectedBolaoId !== null } }
+  );
 
   const upcomingMatches = Array.isArray(matches) ? matches.slice(0, 4) : [];
 
@@ -87,7 +105,14 @@ export default function Dashboard() {
         </div>
 
         {/* Scoring Rules */}
-        <ScoringTable />
+        <ScoringTable
+          exactScore={scoringConfig?.exactScore ?? 10}
+          correctOutcomeGoalDiff={scoringConfig?.correctOutcomeGoalDiff ?? 7}
+          correctOutcome={scoringConfig?.correctOutcome ?? 5}
+          wrongOutcome={scoringConfig?.wrongOutcome ?? 0}
+          bonusChampion={scoringConfig?.bonusChampion ?? 15}
+          bonusTopScorer={scoringConfig?.bonusTopScorer ?? 10}
+        />
       </div>
     </Layout>
   );
@@ -105,17 +130,33 @@ function StatCard({ title, value, icon: Icon, color }: any) {
   );
 }
 
-function ScoringTable() {
+type ScoringTableProps = {
+  exactScore: number;
+  correctOutcomeGoalDiff: number;
+  correctOutcome: number;
+  wrongOutcome: number;
+  bonusChampion: number;
+  bonusTopScorer: number;
+};
+
+function ScoringTable({
+  exactScore,
+  correctOutcomeGoalDiff,
+  correctOutcome,
+  wrongOutcome,
+  bonusChampion,
+  bonusTopScorer,
+}: ScoringTableProps) {
   const matchRows = [
-    { result: "Placar Exato", description: "Acertou o placar exato do jogo", points: 10, color: "text-primary", bg: "bg-primary/10 border-primary/20" },
-    { result: "Resultado + Saldo de Gols", description: "Acertou o vencedor e a diferença de gols", points: 7, color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20" },
-    { result: "Resultado Correto", description: "Acertou apenas o vencedor ou empate", points: 5, color: "text-purple-400", bg: "bg-purple-400/10 border-purple-400/20" },
-    { result: "Resultado Errado", description: "Não acertou o resultado", points: 0, color: "text-muted-foreground", bg: "bg-secondary/40 border-white/5" },
+    { result: "Placar Exato", description: "Acertou o placar exato do jogo", points: exactScore, color: "text-primary", bg: "bg-primary/10 border-primary/20" },
+    { result: "Resultado + Saldo de Gols", description: "Acertou o vencedor e a diferença de gols", points: correctOutcomeGoalDiff, color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20" },
+    { result: "Resultado Correto", description: "Acertou apenas o vencedor ou empate", points: correctOutcome, color: "text-purple-400", bg: "bg-purple-400/10 border-purple-400/20" },
+    { result: "Resultado Errado", description: "Não acertou o resultado", points: wrongOutcome, color: "text-muted-foreground", bg: "bg-secondary/40 border-white/5" },
   ];
 
   const bonusRows = [
-    { result: "Campeão", description: "Acertou o campeão do torneio", points: 15, color: "text-accent", bg: "bg-accent/10 border-accent/20" },
-    { result: "Artilheiro", description: "Acertou o artilheiro do torneio", points: 10, color: "text-orange-400", bg: "bg-orange-400/10 border-orange-400/20" },
+    { result: "Campeão", description: "Acertou o campeão do torneio", points: bonusChampion, color: "text-accent", bg: "bg-accent/10 border-accent/20" },
+    { result: "Artilheiro", description: "Acertou o artilheiro do torneio", points: bonusTopScorer, color: "text-orange-400", bg: "bg-orange-400/10 border-orange-400/20" },
   ];
 
   const tiebreakerRows = [

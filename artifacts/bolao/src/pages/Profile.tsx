@@ -1,21 +1,35 @@
 import React, { useState } from "react";
-import { useGetMyRanking, useGetMyBonusBets, useSubmitBonusBets, getGetMyBonusBetsQueryKey } from "@workspace/api-client-react";
+import {
+  useGetMyRanking,
+  useGetMyBonusBets,
+  useSubmitBonusBets,
+  getGetMyBonusBetsQueryKey,
+  getGetMyRankingQueryKey,
+} from "@workspace/api-client-react";
 import { Layout } from "@/components/Layout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, XCircle } from "lucide-react";
+import { useBolaoContext } from "@/lib/bolao-context";
 
 export default function Profile() {
-  const { data: ranking } = useGetMyRanking();
-  const { data: bonusBets } = useGetMyBonusBets();
+  const { selectedBolaoId } = useBolaoContext();
+  const { data: ranking } = useGetMyRanking(selectedBolaoId ?? 0, {
+    query: { queryKey: getGetMyRankingQueryKey(selectedBolaoId ?? 0), enabled: selectedBolaoId !== null },
+  });
+  const { data: bonusBets } = useGetMyBonusBets(selectedBolaoId ?? 0, {
+    query: { queryKey: getGetMyBonusBetsQueryKey(selectedBolaoId ?? 0), enabled: selectedBolaoId !== null },
+  });
   
   const queryClient = useQueryClient();
   const submitBonus = useSubmitBonusBets({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetMyBonusBetsQueryKey() });
+        if (selectedBolaoId !== null) {
+          queryClient.invalidateQueries({ queryKey: getGetMyBonusBetsQueryKey(selectedBolaoId) });
+        }
       }
     }
   });
@@ -32,7 +46,8 @@ export default function Profile() {
 
   const handleBonusSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    submitBonus.mutate({ data: { champion, topScorer } });
+    if (selectedBolaoId === null) return;
+    submitBonus.mutate({ bolaoId: selectedBolaoId, data: { champion, topScorer } });
   };
 
   return (

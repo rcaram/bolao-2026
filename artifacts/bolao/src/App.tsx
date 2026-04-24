@@ -10,6 +10,9 @@ import Leaderboard from "./pages/Leaderboard";
 import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/not-found";
+import Boloes from "./pages/Boloes";
+import BolaoSettings from "./pages/BolaoSettings";
+import { BolaoProvider } from "./lib/bolao-context";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -59,6 +62,12 @@ function Router() {
       <Route path="/profile">
         <AuthGuard><Profile /></AuthGuard>
       </Route>
+      <Route path="/boloes">
+        <AuthGuard><Boloes /></AuthGuard>
+      </Route>
+      <Route path="/boloes/:bolaoId/settings">
+        <AuthGuard><BolaoSettings /></AuthGuard>
+      </Route>
       <Route path="/admin">
         <AuthGuard><Admin /></AuthGuard>
       </Route>
@@ -72,7 +81,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-        <Router />
+        <BolaoProvider>
+          <Router />
+        </BolaoProvider>
       </WouterRouter>
     </QueryClientProvider>
   );

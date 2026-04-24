@@ -4,9 +4,13 @@ import { Layout } from "@/components/Layout";
 import { Card } from "@/components/ui/card";
 import { Trophy, Target, Award } from "lucide-react";
 import { motion } from "framer-motion";
+import { useBolaoContext } from "@/lib/bolao-context";
 
 export default function Leaderboard() {
-  const { data: rankings, isLoading } = useGetRankings({ query: { queryKey: getGetRankingsQueryKey(), refetchInterval: 30000 } });
+  const { selectedBolaoId } = useBolaoContext();
+  const { data: rankings, isLoading } = useGetRankings(selectedBolaoId ?? 0, {
+    query: { queryKey: getGetRankingsQueryKey(selectedBolaoId ?? 0), refetchInterval: 30000, enabled: selectedBolaoId !== null },
+  });
   const { data: currentUser } = useGetMe();
 
   return (

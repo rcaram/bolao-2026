@@ -5,7 +5,7 @@ import {
   CreateTeamBody,
   UpdateMatchResultBody,
 } from "@workspace/api-zod";
-import { betsTable, db, groupsTable, importSchedule, invitesTable, matchesTable, scoringConfigTable, teamsTable, usersTable } from "@workspace/db";
+import { betsTable, bolaoScoringConfigsTable, db, groupsTable, importSchedule, invitesTable, matchesTable, scoringConfigTable, teamsTable, usersTable } from "@workspace/db";
 import crypto from "crypto";
 import { eq } from "drizzle-orm";
 import { Router } from "express";
@@ -27,6 +27,22 @@ interface RouteLogger {
 async function getConfig(): Promise<ScoringConfig> {
   const [row] = await db.select().from(scoringConfigTable).where(eq(scoringConfigTable.id, 1));
   if (!row) return DEFAULT_SCORING_CONFIG;
+  return {
+    exactScore: row.exactScore,
+    correctOutcomeGoalDiff: row.correctOutcomeGoalDiff,
+    correctOutcome: row.correctOutcome,
+    wrongOutcome: row.wrongOutcome,
+    bonusChampion: row.bonusChampion,
+    bonusTopScorer: row.bonusTopScorer,
+  };
+}
+
+async function getConfigForBolao(bolaoId: number): Promise<ScoringConfig> {
+  const [row] = await db
+    .select()
+    .from(bolaoScoringConfigsTable)
+    .where(eq(bolaoScoringConfigsTable.bolaoId, bolaoId));
+  if (!row) return getConfig();
   return {
     exactScore: row.exactScore,
     correctOutcomeGoalDiff: row.correctOutcomeGoalDiff,
@@ -355,9 +371,14 @@ router.put("/matches/:matchId/result", async (req, res) => {
       .returning();
 
     if (status === "finished") {
-      const config = await getConfig();
       const bets = await db.select().from(betsTable).where(eq(betsTable.matchId, matchId));
+      const configCache = new Map<number, ScoringConfig>();
       for (const bet of bets) {
+        let config = configCache.get(bet.bolaoId);
+        if (!config) {
+          config = await getConfigForBolao(bet.bolaoId);
+          configCache.set(bet.bolaoId, config);
+        }
         const scored = calculateBetPoints(bet.homeScore, bet.awayScore, homeScore, awayScore, config);
         await db.update(betsTable).set({
           points: scored.points,

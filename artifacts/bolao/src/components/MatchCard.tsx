@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { formatStage, getTimeUntil, isBettingLocked, formatDate } from "@/lib/utils";
 import { Clock, CheckCircle2, ChevronUp, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
+import { useBolaoContext } from "@/lib/bolao-context";
 
 function getTeamName(match: MatchWithBet, side: "home" | "away"): string {
   if (side === "home") {
@@ -20,6 +21,7 @@ function getTeamFlag(match: MatchWithBet, side: "home" | "away"): string {
 }
 
 export function MatchCard({ match }: { match: MatchWithBet }) {
+  const { selectedBolaoId } = useBolaoContext();
   const locked = isBettingLocked(match.bettingDeadline) || match.status !== "upcoming";
   const [homeScore, setHomeScore] = useState(match.userBet?.homeScore ?? 0);
   const [awayScore, setAwayScore] = useState(match.userBet?.awayScore ?? 0);
@@ -36,7 +38,8 @@ export function MatchCard({ match }: { match: MatchWithBet }) {
   });
 
   const handleSave = () => {
-    submitBet.mutate({ data: { matchId: match.id, homeScore, awayScore } });
+    if (selectedBolaoId === null) return;
+    submitBet.mutate({ bolaoId: selectedBolaoId, data: { matchId: match.id, homeScore, awayScore } });
   };
 
   const hasScoreResult = match.homeScore !== undefined && match.awayScore !== undefined;

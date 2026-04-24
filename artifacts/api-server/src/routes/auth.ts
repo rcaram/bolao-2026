@@ -1,6 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, invitesTable } from "@workspace/db";
+import { bolaoMembersTable, db, invitesTable, usersTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
 import { requireAuth } from "../lib/auth";
@@ -86,6 +86,14 @@ router.post("/register", async (req, res) => {
       .update(invitesTable)
       .set({ used: true })
       .where(eq(invitesTable.id, invite.id));
+
+    if (invite.bolaoId) {
+      await db.insert(bolaoMembersTable).values({
+        bolaoId: invite.bolaoId,
+        userId: user.id,
+        role: "member",
+      });
+    }
 
     req.session.userId = user.id;
     req.session.userRole = user.role;
