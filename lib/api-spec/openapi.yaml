@@ -17,6 +17,7 @@ tags:
   - name: rankings
   - name: admin
   - name: bonuses
+  - name: boloes
 
 paths:
   /healthz:
@@ -170,6 +171,10 @@ paths:
           in: query
           schema:
             type: integer
+        - name: bolaoId
+          in: query
+          schema:
+            type: integer
       responses:
         "200":
           description: List of matches
@@ -190,6 +195,10 @@ paths:
           required: true
           schema:
             type: integer
+        - name: bolaoId
+          in: query
+          schema:
+            type: integer
       responses:
         "200":
           description: Match details
@@ -204,10 +213,256 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /bets:
+  /boloes:
+    get:
+      operationId: getBoloes
+      tags: [boloes]
+      responses:
+        "200":
+          description: User boloes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Bolao"
+    post:
+      operationId: createBolao
+      tags: [boloes]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBolaoRequest"
+      responses:
+        "201":
+          description: Bolao created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bolao"
+
+  /boloes/join:
+    post:
+      operationId: joinBolao
+      tags: [boloes]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinBolaoRequest"
+      responses:
+        "200":
+          description: Joined bolao
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bolao"
+
+  /boloes/{bolaoId}:
+    get:
+      operationId: getBolao
+      tags: [boloes]
+      parameters:
+        - name: bolaoId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Bolao details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bolao"
+    put:
+      operationId: updateBolao
+      tags: [boloes]
+      parameters:
+        - name: bolaoId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBolaoRequest"
+      responses:
+        "200":
+          description: Bolao updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bolao"
+    delete:
+      operationId: deleteBolao
+      tags: [boloes]
+      parameters:
+        - name: bolaoId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Bolao deleted
+
+  /boloes/{bolaoId}/leave:
+    post:
+      operationId: leaveBolao
+      tags: [boloes]
+      parameters:
+        - name: bolaoId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Left bolao
+
+  /boloes/{bolaoId}/members:
+    get:
+      operationId: getBolaoMembers
+      tags: [boloes]
+      parameters:
+        - name: bolaoId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Bolao members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BolaoMember"
+
+  /boloes/{bolaoId}/members/{userId}:
+    delete:
+      operationId: removeBolaoMember
+      tags: [boloes]
+      parameters:
+        - name: bolaoId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Member removed
+
+  /boloes/{bolaoId}/members/{userId}/role:
+    put:
+      operationId: updateBolaoMemberRole
+      tags: [boloes]
+      parameters:
+        - name: bolaoId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBolaoMemberRoleRequest"
+      responses:
+        "200":
+          description: Member role updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BolaoMemberRoleUpdateResponse"
+
+  /boloes/{bolaoId}/invite-code/regenerate:
+    post:
+      operationId: regenerateBolaoInviteCode
+      tags: [boloes]
+      parameters:
+        - name: bolaoId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Invite code regenerated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bolao"
+
+  /boloes/{bolaoId}/scoring-config:
+    get:
+      operationId: getBolaoScoringConfig
+      tags: [boloes]
+      parameters:
+        - name: bolaoId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Bolao scoring config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoringConfig"
+    put:
+      operationId: updateBolaoScoringConfig
+      tags: [boloes]
+      parameters:
+        - name: bolaoId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScoringConfig"
+      responses:
+        "200":
+          description: Updated bolao scoring config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoringConfig"
+
+  /boloes/{bolaoId}/bets:
     post:
       operationId: submitBet
       tags: [bets]
+      parameters:
+        - name: bolaoId
+          in: path
+          required: true
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
@@ -221,23 +476,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Bet"
-        "400":
-          description: Deadline passed or invalid
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: Not authenticated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /bets/my:
+  /boloes/{bolaoId}/bets/my:
     get:
       operationId: getMyBets
       tags: [bets]
+      parameters:
+        - name: bolaoId
+          in: path
+          required: true
+          schema:
+            type: integer
       responses:
         "200":
           description: User bets
@@ -248,11 +496,16 @@ paths:
                 items:
                   $ref: "#/components/schemas/BetWithMatch"
 
-  /bets/match/{matchId}:
+  /boloes/{bolaoId}/bets/match/{matchId}:
     get:
       operationId: getMatchBets
       tags: [bets]
       parameters:
+        - name: bolaoId
+          in: path
+          required: true
+          schema:
+            type: integer
         - name: matchId
           in: path
           required: true
@@ -268,10 +521,16 @@ paths:
                 items:
                   $ref: "#/components/schemas/BetWithUser"
 
-  /rankings:
+  /boloes/{bolaoId}/rankings:
     get:
       operationId: getRankings
       tags: [rankings]
+      parameters:
+        - name: bolaoId
+          in: path
+          required: true
+          schema:
+            type: integer
       responses:
         "200":
           description: Leaderboard
@@ -282,10 +541,16 @@ paths:
                 items:
                   $ref: "#/components/schemas/RankingEntry"
 
-  /rankings/my:
+  /boloes/{bolaoId}/rankings/my:
     get:
       operationId: getMyRanking
       tags: [rankings]
+      parameters:
+        - name: bolaoId
+          in: path
+          required: true
+          schema:
+            type: integer
       responses:
         "200":
           description: My ranking details
@@ -294,10 +559,16 @@ paths:
               schema:
                 $ref: "#/components/schemas/UserRankingDetail"
 
-  /bonuses:
+  /boloes/{bolaoId}/bonuses:
     get:
       operationId: getMyBonusBets
       tags: [bonuses]
+      parameters:
+        - name: bolaoId
+          in: path
+          required: true
+          schema:
+            type: integer
       responses:
         "200":
           description: My bonus bets
@@ -308,6 +579,12 @@ paths:
     post:
       operationId: submitBonusBets
       tags: [bonuses]
+      parameters:
+        - name: bolaoId
+          in: path
+          required: true
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
@@ -321,12 +598,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BonusBet"
-        "400":
-          description: Locked or invalid
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
 
   /invite/{token}:
     get:
@@ -576,6 +847,97 @@ components:
           type: integer
       required: [id, email, name, role, totalPoints, betsSubmitted]
 
+    CreateBolaoRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 3
+        description:
+          type: string
+      required: [name]
+
+    JoinBolaoRequest:
+      type: object
+      properties:
+        inviteCode:
+          type: string
+      required: [inviteCode]
+
+    Bolao:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        inviteCode:
+          type: string
+        createdBy:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, inviteCode, createdBy, createdAt]
+
+    BolaoMember:
+      type: object
+      properties:
+        userId:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, member]
+        joinedAt:
+          type: string
+          format: date-time
+      required: [userId, name, email, role, joinedAt]
+
+    UpdateBolaoMemberRoleRequest:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [admin, member]
+      required: [role]
+
+    BolaoMemberRoleUpdateResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        bolaoId:
+          type: integer
+        userId:
+          type: integer
+        role:
+          type: string
+          enum: [admin, member]
+      required: [id, bolaoId, userId, role]
+
+    ScoringConfig:
+      type: object
+      properties:
+        exactScore:
+          type: integer
+        correctOutcomeGoalDiff:
+          type: integer
+        correctOutcome:
+          type: integer
+        wrongOutcome:
+          type: integer
+        bonusChampion:
+          type: integer
+        bonusTopScorer:
+          type: integer
+      required: [exactScore, correctOutcomeGoalDiff, correctOutcome, wrongOutcome, bonusChampion, bonusTopScorer]
+
     Group:
       type: object
       properties:
@@ -661,6 +1023,8 @@ components:
       type: object
       properties:
         id:
+          type: integer
+        bolaoId:
           type: integer
         email:
           type: string
@@ -802,6 +1166,8 @@ components:
           type: integer
         userId:
           type: integer
+        bolaoId:
+          type: integer
         matchId:
           type: integer
         homeScore:
@@ -822,7 +1188,7 @@ components:
         updatedAt:
           type: string
           format: date-time
-      required: [id, userId, matchId, homeScore, awayScore, createdAt, updatedAt]
+      required: [id, userId, bolaoId, matchId, homeScore, awayScore, createdAt, updatedAt]
 
     BetWithMatch:
       allOf:
@@ -895,6 +1261,8 @@ components:
           type: integer
         userId:
           type: integer
+        bolaoId:
+          type: integer
         champion:
           type: string
         topScorer:
@@ -911,4 +1279,4 @@ components:
         updatedAt:
           type: string
           format: date-time
-      required: [id, userId, champion, locked, createdAt, updatedAt]
+      required: [id, userId, bolaoId, champion, locked, createdAt, updatedAt]

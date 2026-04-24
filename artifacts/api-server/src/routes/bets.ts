@@ -3,8 +3,10 @@ import { betsTable, db, groupsTable, matchesTable, teamsTable, usersTable } from
 import { and, eq } from "drizzle-orm";
 import { Router } from "express";
 import { requireAuth } from "../lib/auth";
+import { getBolaoIdFromParams, requireBolaoMember } from "../lib/bolao-auth";
 
-const router = Router();
+const router = Router({ mergeParams: true });
+router.use(requireAuth, requireBolaoMember);
 
 function getBettingDeadline(matchDate: Date): Date {
   return new Date(matchDate.getTime() - 30 * 60 * 1000);
@@ -44,6 +46,11 @@ router.post("/", requireAuth, async (req, res) => {
 
   const { matchId, homeScore, awayScore } = parsed.data;
   const userId = req.session.userId!;
+  const bolaoId = getBolaoIdFromParams(req);
+  if (!bolaoId) {
+    res.status(400).json({ error: "Bad request", message: "Invalid bolao ID" });
+    return;
+  }
 
   try {
     const [match] = await db.select().from(matchesTable).where(eq(matchesTable.id, matchId));
@@ -58,7 +65,7 @@ router.post("/", requireAuth, async (req, res) => {
     }
 
     const [existing] = await db.select().from(betsTable)
-      .where(and(eq(betsTable.matchId, matchId), eq(betsTable.userId, userId)));
+      .where(and(eq(betsTable.matchId, matchId), eq(betsTable.userId, userId), eq(betsTable.bolaoId, bolaoId)));
 
     let bet;
     if (existing) {
@@ -67,7 +74,7 @@ router.post("/", requireAuth, async (req, res) => {
         .where(eq(betsTable.id, existing.id))
         .returning();
     } else {
-      [bet] = await db.insert(betsTable).values({ userId, matchId, homeScore, awayScore }).returning();
+      [bet] = await db.insert(betsTable).values({ userId, bolaoId, matchId, homeScore, awayScore }).returning();
     }
 
     res.json(bet);
@@ -77,10 +84,18 @@ router.post("/", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/my", requireAuth, async (req, res) => {
+router.get("/my", async (req, res) => {
   const userId = req.session.userId!;
+  const bolaoId = getBolaoIdFromParams(req);
+  if (!bolaoId) {
+    res.status(400).json({ error: "Bad request", message: "Invalid bolao ID" });
+    return;
+  }
   try {
-    const bets = await db.select().from(betsTable).where(eq(betsTable.userId, userId));
+    const bets = await db
+      .select()
+      .from(betsTable)
+      .where(and(eq(betsTable.userId, userId), eq(betsTable.bolaoId, bolaoId)));
     const result = await Promise.all(
       bets.map(async (b) => {
         const [match] = await db.select().from(matchesTable).where(eq(matchesTable.id, b.matchId));
@@ -95,10 +110,15 @@ router.get("/my", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/match/:matchId", requireAuth, async (req, res) => {
+router.get("/match/:matchId", async (req, res) => {
   const matchId = parseInt(req.params.matchId as string);
+  const bolaoId = getBolaoIdFromParams(req);
   if (isNaN(matchId)) {
     res.status(400).json({ error: "Bad request", message: "Invalid match ID" });
+    return;
+  }
+  if (!bolaoId) {
+    res.status(400).json({ error: "Bad request", message: "Invalid bolao ID" });
     return;
   }
   try {
@@ -113,7 +133,10 @@ router.get("/match/:matchId", requireAuth, async (req, res) => {
       return;
     }
 
-    const bets = await db.select().from(betsTable).where(eq(betsTable.matchId, matchId));
+    const bets = await db
+      .select()
+      .from(betsTable)
+      .where(and(eq(betsTable.matchId, matchId), eq(betsTable.bolaoId, bolaoId)));
     const userIds = [...new Set(bets.map((b) => b.userId))];
     const users = await Promise.all(
       userIds.map((id) => db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, id)))

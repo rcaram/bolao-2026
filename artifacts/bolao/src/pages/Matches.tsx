@@ -1,14 +1,21 @@
 import React, { useState } from "react";
-import { useGetMatches } from "@workspace/api-client-react";
+import { getGetMatchesQueryKey, useGetMatches } from "@workspace/api-client-react";
 import { Layout } from "@/components/Layout";
 import { MatchCard } from "@/components/MatchCard";
+import { useBolaoContext } from "@/lib/bolao-context";
 
 const STAGES = ["all", "group", "round_of_32", "round_of_16", "quarterfinal", "semifinal", "third_place", "final"];
 
 export default function Matches() {
+  const { selectedBolaoId } = useBolaoContext();
   const [stageFilter, setStageFilter] = useState<any>("all");
+  const matchParams =
+    stageFilter === "all"
+      ? { bolaoId: selectedBolaoId ?? undefined }
+      : { stage: stageFilter, bolaoId: selectedBolaoId ?? undefined };
   const { data: matches, isLoading } = useGetMatches(
-    stageFilter === "all" ? {} : { stage: stageFilter }
+    matchParams,
+    { query: { queryKey: getGetMatchesQueryKey(matchParams), enabled: selectedBolaoId !== null } }
   );
 
   return (
