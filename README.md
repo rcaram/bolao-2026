@@ -12,6 +12,43 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 - `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly` using project references
 - `pnpm --filter @workspace/scripts run seed` — seed the database with sample data
 
+## Docker Deployment
+
+`Dockerfile` at project root builds frontend (`@workspace/bolao`) + API (`@workspace/api-server`) and serves both from single Node process on port `8080`.
+
+Build image:
+
+```bash
+docker build --platform linux/amd64 -t bolao-world-cup .
+```
+
+Run container:
+
+```bash
+docker run --rm -p 8080:8080 \
+  -e DATABASE_URL="postgres://user:pass@host:5432/dbname" \
+  -e SESSION_SECRET="change-me-in-production" \
+  -e BACKEND_PORT="8080" \
+  bolao-world-cup
+```
+
+App + API will be available on same host:
+
+- Frontend: `/`
+- API: `/api/*`
+
+Using Docker Compose (app + Postgres):
+
+```bash
+SESSION_SECRET="change-me-in-production" docker compose up --build -d
+```
+
+Stop services:
+
+```bash
+docker compose down
+```
+
 ## Packages
 
 ### `artifacts/api-server` (`@workspace/api-server`)

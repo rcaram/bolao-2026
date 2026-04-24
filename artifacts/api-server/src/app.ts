@@ -4,6 +4,8 @@ import pinoHttp from "pino-http";
 import session from "express-session";
 import ConnectPgSimple from "connect-pg-simple";
 import cookieParser from "cookie-parser";
+import path from "node:path";
+import { existsSync } from "node:fs";
 import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -63,5 +65,20 @@ app.use(
 );
 
 app.use("/api", router);
+
+const frontendDistDir = path.resolve(
+  process.cwd(),
+  "artifacts",
+  "bolao",
+  "dist",
+  "public",
+);
+
+if (existsSync(frontendDistDir)) {
+  app.use(express.static(frontendDistDir));
+  app.get(/^\/(?!api(?:\/|$)).*/, (_req, res) => {
+    res.sendFile(path.join(frontendDistDir, "index.html"));
+  });
+}
 
 export default app;
