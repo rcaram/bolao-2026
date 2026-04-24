@@ -1,4 +1,56 @@
-import { TeamStanding } from "../routes/standings";
+import type { TeamStanding } from "./standings";
+
+export interface MatchData {
+  matchNumber: number | null;
+  homeTeamId: number | null;
+  awayTeamId: number | null;
+  homeScore: number | null;
+  awayScore: number | null;
+  status: string;
+}
+
+function getMatchByNumber(matchNumber: number, allMatches: MatchData[]): MatchData | null {
+  return allMatches.find((match) => match.matchNumber === matchNumber) ?? null;
+}
+
+export function resolveMatchWinner(matchNumber: number, allMatches: MatchData[]): number | null {
+  const match = getMatchByNumber(matchNumber, allMatches);
+  if (!match) return null;
+  if (match.status !== "finished") return null;
+  if (match.homeScore === null || match.awayScore === null) return null;
+  if (match.homeTeamId === null || match.awayTeamId === null) return null;
+  if (match.homeScore === match.awayScore) return null;
+  return match.homeScore > match.awayScore ? match.homeTeamId : match.awayTeamId;
+}
+
+export function resolveMatchLoser(matchNumber: number, allMatches: MatchData[]): number | null {
+  const match = getMatchByNumber(matchNumber, allMatches);
+  if (!match) return null;
+  if (match.status !== "finished") return null;
+  if (match.homeScore === null || match.awayScore === null) return null;
+  if (match.homeTeamId === null || match.awayTeamId === null) return null;
+  if (match.homeScore === match.awayScore) return null;
+  return match.homeScore > match.awayScore ? match.awayTeamId : match.homeTeamId;
+}
+
+export function resolveKnockoutPlaceholder(
+  placeholder: string,
+  allMatches: MatchData[],
+): number | null {
+  const winnerMatch = placeholder.match(/^Winner Match (\d+)$/);
+  if (winnerMatch) {
+    const matchNumber = Number(winnerMatch[1]);
+    return resolveMatchWinner(matchNumber, allMatches);
+  }
+
+  const loserMatch = placeholder.match(/^Loser Match (\d+)$/);
+  if (loserMatch) {
+    const matchNumber = Number(loserMatch[1]);
+    return resolveMatchLoser(matchNumber, allMatches);
+  }
+
+  return null;
+}
 
 /**
  * Given a placeholder string, return the resolved teamId or null.

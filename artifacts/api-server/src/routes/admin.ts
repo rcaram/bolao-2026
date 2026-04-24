@@ -10,12 +10,17 @@ import crypto from "crypto";
 import { eq } from "drizzle-orm";
 import { Router } from "express";
 import { requireAdmin } from "../lib/auth";
-import { resolveTeamFromPlaceholder } from "../lib/results";
+import { resolveKnockoutPlaceholder, resolveTeamFromPlaceholder, type MatchData } from "../lib/results";
 import { calculateBetPoints, DEFAULT_SCORING_CONFIG, type ScoringConfig } from "../lib/scoring";
 import { calculateGroupStandings, type TeamStanding } from "./standings";
 
 const router = Router();
 router.use(requireAdmin);
+
+interface RouteLogger {
+  info: (obj: unknown, msg: string) => void;
+  error: (obj: unknown, msg: string) => void;
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -43,7 +48,7 @@ async function getConfig(): Promise<ScoringConfig> {
  *   "Runner-up Group A"     → 2nd in Group A
  *   "Best 3rd (A/B/C/D/F)"  → best 3rd-place team from those groups
  */
-async function resolveR32Placeholders(logger: any): Promise<void> {
+async function resolveR32Placeholders(logger: RouteLogger): Promise<void> {
   // 1. Get all groups and build a lookup name → id
   const groups = await db.select().from(groupsTable);
   const groupByName: Record<string, typeof groups[0]> = {};
@@ -90,18 +95,18 @@ async function resolveR32Placeholders(logger: any): Promise<void> {
     // Resolve home placeholder
     if (!r32.homeTeamId && r32.homePlaceholder) {
       const resolved = resolveTeamFromPlaceholder(r32.homePlaceholder, standingsByGroupName, completedGroupIds, groupByName);
-      if (resolved) newHomeTeamId = resolved;
+      if (resolved !== null) newHomeTeamId = resolved;
     }
 
     // Resolve away placeholder
     if (!r32.awayTeamId && r32.awayPlaceholder) {
       const resolved = resolveTeamFromPlaceholder(r32.awayPlaceholder, standingsByGroupName, completedGroupIds, groupByName);
-      if (resolved) newAwayTeamId = resolved;
+      if (resolved !== null) newAwayTeamId = resolved;
     }
 
     // Update if anything changed
     if (newHomeTeamId !== r32.homeTeamId || newAwayTeamId !== r32.awayTeamId) {
-      const updateVals: Record<string, any> = {};
+      const updateVals: Partial<Pick<typeof matchesTable.$inferInsert, "homeTeamId" | "awayTeamId">> = {};
       if (newHomeTeamId !== r32.homeTeamId) updateVals.homeTeamId = newHomeTeamId;
       if (newAwayTeamId !== r32.awayTeamId) updateVals.awayTeamId = newAwayTeamId;
 
@@ -109,6 +114,53 @@ async function resolveR32Placeholders(logger: any): Promise<void> {
       logger.info(
         { matchNumber: r32.matchNumber, homeTeamId: newHomeTeamId, awayTeamId: newAwayTeamId },
         "R32 match teams auto-resolved"
+      );
+    }
+  }
+}
+
+async function resolveKnockoutPlaceholders(logger: RouteLogger): Promise<void> {
+  const allMatches = await db.select().from(matchesTable);
+  const matchData: MatchData[] = allMatches.map((match) => ({
+    matchNumber: match.matchNumber,
+    homeTeamId: match.homeTeamId,
+    awayTeamId: match.awayTeamId,
+    homeScore: match.homeScore,
+    awayScore: match.awayScore,
+    status: match.status,
+  }));
+
+  const nextRoundMatches = allMatches.filter((match) => (
+    match.stage !== "group"
+    && (
+      (match.homeTeamId === null && match.homePlaceholder !== null)
+      || (match.awayTeamId === null && match.awayPlaceholder !== null)
+    )
+  ));
+
+  for (const nextRoundMatch of nextRoundMatches) {
+    let newHomeTeamId = nextRoundMatch.homeTeamId;
+    let newAwayTeamId = nextRoundMatch.awayTeamId;
+
+    if (nextRoundMatch.homeTeamId === null && nextRoundMatch.homePlaceholder) {
+      const resolved = resolveKnockoutPlaceholder(nextRoundMatch.homePlaceholder, matchData);
+      if (resolved !== null) newHomeTeamId = resolved;
+    }
+
+    if (nextRoundMatch.awayTeamId === null && nextRoundMatch.awayPlaceholder) {
+      const resolved = resolveKnockoutPlaceholder(nextRoundMatch.awayPlaceholder, matchData);
+      if (resolved !== null) newAwayTeamId = resolved;
+    }
+
+    if (newHomeTeamId !== nextRoundMatch.homeTeamId || newAwayTeamId !== nextRoundMatch.awayTeamId) {
+      const updateValues: Partial<Pick<typeof matchesTable.$inferInsert, "homeTeamId" | "awayTeamId">> = {};
+      if (newHomeTeamId !== nextRoundMatch.homeTeamId) updateValues.homeTeamId = newHomeTeamId;
+      if (newAwayTeamId !== nextRoundMatch.awayTeamId) updateValues.awayTeamId = newAwayTeamId;
+
+      await db.update(matchesTable).set(updateValues).where(eq(matchesTable.id, nextRoundMatch.id));
+      logger.info(
+        { matchNumber: nextRoundMatch.matchNumber, homeTeamId: newHomeTeamId, awayTeamId: newAwayTeamId },
+        "Knockout match teams auto-resolved"
       );
     }
   }
@@ -127,11 +179,13 @@ router.get("/scoring-config", async (req, res) => {
   }
 });
 
-function parseScoringConfigBody(body: any): ScoringConfig | null {
+function parseScoringConfigBody(body: unknown): ScoringConfig | null {
+  if (typeof body !== "object" || body === null) return null;
+  const bodyRecord = body as Record<string, unknown>;
   const fields: (keyof ScoringConfig)[] = ["exactScore", "correctOutcomeGoalDiff", "correctOutcome", "wrongOutcome", "bonusChampion", "bonusTopScorer"];
-  const result: any = {};
+  const result: Partial<ScoringConfig> = {};
   for (const f of fields) {
-    const v = Number(body[f]);
+    const v = Number(bodyRecord[f]);
     if (!Number.isInteger(v) || v < 0) return null;
     result[f] = v;
   }
@@ -290,7 +344,7 @@ router.put("/matches/:matchId/result", async (req, res) => {
       return;
     }
 
-    const updateValues: Record<string, any> = { homeScore, awayScore, status };
+    const updateValues: Partial<Pick<typeof matchesTable.$inferInsert, "homeScore" | "awayScore" | "status" | "homeTeamId" | "awayTeamId">> = { homeScore, awayScore, status };
     if (homeTeamId !== undefined) updateValues.homeTeamId = homeTeamId;
     if (awayTeamId !== undefined) updateValues.awayTeamId = awayTeamId;
 
@@ -320,6 +374,12 @@ router.put("/matches/:matchId/result", async (req, res) => {
           await resolveR32Placeholders(req.log);
         } catch (resolveErr) {
           req.log.error({ err: resolveErr }, "Failed to auto-resolve R32 placeholders (non-fatal)");
+        }
+      } else {
+        try {
+          await resolveKnockoutPlaceholders(req.log);
+        } catch (resolveErr) {
+          req.log.error({ err: resolveErr }, "Failed to auto-resolve knockout placeholders (non-fatal)");
         }
       }
     }
